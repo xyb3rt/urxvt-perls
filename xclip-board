@@ -1,0 +1,66 @@
+#! perl -w
+# Author:  Bert Muennich
+# Website: http://www.github.com/muennich/urxvt-perls
+# License: GPLv2
+
+# Use keyboard shortcuts to copy the selection to the clipboard and to paste
+# the clipboard contents (optionally escaping all special characters).
+# Requires xclip to be installed!
+
+# Usage: put the following lines in your .Xdefaults:
+#   URxvt.perl-ext-common: xclip-board
+#   URxvt.keysym.M-c:   perl:xclip-board:copy
+#   URxvt.keysym.M-v:   perl:xclip-board:paste
+#   URxvt.keysym.M-C-v: perl:xclip-board:paste_escaped
+
+# The use of the functions should be self-explanatory!
+
+use strict;
+use utf8;
+
+sub copy {
+   my ($self) = @_;
+
+   open(CLIPBOARD, "| xclip -i -selection clipboard");
+   my $sel = $self->selection;
+   utf8::encode($sel);
+   print CLIPBOARD $sel;
+   close(CLIPBOARD);
+
+   ()
+}
+
+sub paste {
+   my ($self) = @_;
+
+   my $str = `xclip -o -selection clipboard`;
+   $str =~ tr/\n/\r/;
+   $self->tt_write($str);
+
+   ()
+}
+
+sub paste_escaped {
+   my ($self) = @_;
+
+   my $str = `xclip -o -selection clipboard`;
+   $str =~ tr/\n/\r/;
+   $str =~ s/([!#\$%&\*\(\) ='"\\\|\[\]`~,<>\?])/\\\1/g;
+   $self->tt_write($str);
+
+   ()
+}
+
+sub on_user_command {
+   my ($self, $cmd) = @_;
+
+   if ($cmd eq "xclip-board:copy") {
+      $self->copy;
+   } elsif ($cmd eq "xclip-board:paste") {
+      $self->paste;
+   } elsif ($cmd eq "xclip-board:paste_escaped") {
+      $self->paste_escaped;
+   }
+
+   ()
+}

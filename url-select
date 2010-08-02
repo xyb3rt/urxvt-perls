@@ -1,0 +1,287 @@
+#! perl -w
+# Author:   Bert Muennich
+# Website:  http://www.github.com/muennich/urxvt-perls
+# Based on: http://www.jukie.net/~bart/blog/urxvt-url-yank
+# License:  GPLv2
+
+# Use keyboard shortcuts to select URLs.
+# This should be used as a replacement for the default matcher extension,
+# it also makes URLs clickable with the middle mouse button.
+
+# Usage: put the following lines in your .Xdefaults:
+# - URxvt.perl-ext-common: url-select
+# - URxvt.keysym.M-u: perl:url-select:select_next
+
+# Use Meta-u to activate URL selection mode, then use the following keys:
+# - 'n':    select next URL (also with Meta-u)
+# - 'N':    select previous URL
+# - Return: open selected URL in browser and quit selection mode
+# - 'y':    copy selected URL to primary selection and quit selection mode
+# - Escape: cancel URL selection mode
+
+# Options:
+# - URxvt.urlLauncher:   browser/command to open selected URL with
+# - URxvt.underlineURLs: if set to true, all URLs get underlined
+
+
+use strict;
+
+my $url_matcher = qr{(
+	(?:https?://|ftp://|news://|mailto:|file://|www\.)
+	[ab-zA-Z0-9\-\@;\/?:&=%\$_.+!*\x27(),~#]+[ab-zA-Z0-9\-\@;\/?&=%\$_+!*\x27()~]
+)}x;
+
+my $browser;
+my $underline = 0;
+
+my $active = 0;
+my $lastdir;
+my $row;
+my $ltext;
+my $sel_url;
+my $n;
+my @beg;
+my @end;
+
+my $old_view_start;
+my $old_sel_text;
+
+
+sub on_start {
+	my ($term) = @_;
+
+	eval { require Regexp::Common::URI };
+	if(!$@) {
+		require Regexp::Common;
+		Regexp::Common->import('URI');
+		$url_matcher = $Regexp::Common::RE{URI}{HTTP};
+	}
+
+	# read resource settings
+	$browser = $term->x_resource('urlLauncher') || 'x-www-browser';
+	if ($term->x_resource('underlineURLs') eq 'true') {
+		$underline = 1;
+	}
+
+	()
+}
+
+
+sub on_line_update {
+	my ($term, $rn) = @_;
+
+	if ($underline) {
+		my $line = $term->line($rn);
+		my $text = $line->t;
+		my $rend = $line->r;
+
+		while ($text =~ /$url_matcher/g) {
+			my $url = $1;
+			my ($first, $last) = ($-[1], $+[1] - 1);
+			--$last if $url =~ /["')]$/;
+
+			for (@{$rend}[$first .. $last]) {
+				$_ |= urxvt::RS_Uline;
+			}
+			$line->r($rend);
+		}
+	}
+
+	if ($active) {
+		# workaround for updates in ncurses clients
+		my @sel_beg = $term->selection_beg();
+		my @sel_end = $term->selection_end();
+		if ($sel_beg[0] != $row || $sel_beg[1] != $beg[$n] ||
+				$sel_end[0] != $row || $sel_end[1] != $end[$n]) {
+			$row -= $lastdir;
+			select_next($term, $lastdir, 1);
+		}
+	}
+	
+	()
+}
+
+
+sub on_scroll_back {
+	my ($term, $lines, undef) = @_;
+
+	if ($active) {
+		$row -= $lines;
+	}
+
+	()
+}
+
+
+sub on_user_command {
+	my ($term, $cmd) = @_;
+
+	if ($cmd eq 'url-select:select_next') {
+		if (not $active) {
+			$old_view_start = $term->view_start();
+			$old_sel_text = $term->selection();
+		}
+		select_next($term, -1);
+	}
+
+	()
+}
+
+
+sub on_key_press {
+	if ($active) {
+		return 1;
+	}
+
+	()
+}
+
+
+sub on_key_release {
+	my ($term, $event, $keysym, undef) = @_;
+
+	if ($active) {
+		my $char = chr($keysym);
+
+		if ($keysym == 65307) {
+			# escape
+			quit_sel_mode($term);
+			return 1;
+		} elsif ($keysym == 65293) {
+			# return
+			$term->exec_async($browser, $sel_url);
+			quit_sel_mode($term);
+			return 1;
+		} elsif ($char eq 'y') {
+			quit_sel_mode($term);
+			$term->selection($sel_url);
+			return 1;
+		} elsif ($char eq 'n') {
+			select_next($term, -1);
+			return 1;
+		} elsif ($char eq 'N') {
+			select_next($term, 1);
+			return 1;
+		}
+	}
+
+	()
+}
+
+
+sub on_button_release {
+	my ($term, $event) = @_;
+
+	my $mask = $term->ModLevel3Mask | $term->ModMetaMask |
+			urxvt::ShiftMask | urxvt::ControlMask;
+
+	if ($event->{button} == 2 && ($event->{state} & $mask) == 0) {
+		my $col = $event->{col};
+		my $line = $term->line($event->{row});
+		my $text = $line->t;
+
+		while ($text =~ /($url_matcher)/g) {
+			my ($url, $first, $last) = ($1, $-[1], $+[1] - 1);
+
+			if ($first <= $col && $last >= $col) {
+				$url =~ s/["')]$//;
+				$term->exec_async($browser, $url);
+				return 1;
+			}
+		}
+	}
+
+	()
+}
+
+
+sub select_next {
+	# $dir < 0: up; > 0: down
+	my ($term, $dir, $redo) = @_;
+	$lastdir = $dir;
+
+	if (not $active) {
+		$active = 1;
+		$row = $term->view_start() + $term->nrow;
+	} elsif (!$redo &&
+			(($dir < 0 && $n > 0) || ($dir > 0 && $n < $#beg))) {
+		# another url on current line
+		$n += $dir;
+		select_url($term);
+		return;
+	}
+
+	@beg = ();
+	@end = ();
+
+	for (my $i = 0; $i < $term->nrow - $term->top_row; ++$i) {
+		$row += $dir;
+		if ($dir < 0 && $row < $term->top_row) {
+			$row = $term->nrow - 1;
+		} elsif ($dir > 0 && $row >= $term->nrow) {
+			$row = $term->top_row;
+		}
+
+		my $line = $term->line($row);
+		$ltext = $line->t;
+
+		while ($ltext =~ /$url_matcher/g) {
+			push @beg, $-[0];
+			push @end, $+[0];
+			--$end[$#end] if $& =~ /["')]$/;
+		}
+
+		if (@beg > 0) {
+			$n = $dir < 0 ? $#beg : 0;
+			select_url($term);
+			return;
+		}
+	}
+	
+	# no url found
+	quit_sel_mode($term);
+
+	()
+}
+
+
+sub select_url {
+	my ($term) = @_;
+
+	# select current url
+	$term->selection_beg($row, $beg[$n]);
+	$term->selection_end($row, $end[$n]);
+	$term->selection_make(0);
+
+	# scroll to make it visible
+	if ($row < $term->view_start()) {
+		$term->view_start($row);
+	} elsif ($row >= $term->view_start() + $term->nrow) {
+		$term->view_start($row - $term->nrow + 1);
+	}
+
+	# save url text
+	$sel_url = substr($ltext, $beg[$n], $end[$n] - $beg[$n]);
+
+	()
+}
+
+
+sub quit_sel_mode {
+	my ($term) = @_;
+
+	$active = 0;
+
+	# select nothing
+	$term->selection_beg(1, 0);
+	$term->selection_end(1, 0);
+	$term->selection_make(0);
+
+	# restore old primary selection
+	$term->selection($old_sel_text);
+
+	# restore old view start
+	$term->view_start($old_view_start);
+
+	()
+}
