@@ -16,7 +16,7 @@
 # - 'n':    select next URL (also with Meta-u)
 # - 'N':    select previous URL
 # - Return: open selected URL in browser and quit selection mode
-# - 'y':    copy selected URL to primary selection and quit selection mode
+# - 'y':    copy (yank) selected URL and quit selection mode
 # - Escape: cancel URL selection mode
 
 # Options:
@@ -31,24 +31,9 @@ my $url_matcher = qr{(
 	[ab-zA-Z0-9\-\@;\/?:&=%\$_.+!*\x27(),~#]+[ab-zA-Z0-9\-\@;\/?&=%\$_+!*\x27()~]
 )}x;
 
-my $browser;
-my $underline = 0;
-
-my $active = 0;
-my $lastdir;
-my $row;
-my $ltext;
-my $sel_url;
-my $n;
-my @beg;
-my @end;
-
-my $old_view_start;
-my $old_sel_text;
-
 
 sub on_start {
-	my ($term) = @_;
+	my ($self) = @_;
 
 	eval { require Regexp::Common::URI };
 	if(!$@) {
@@ -58,9 +43,9 @@ sub on_start {
 	}
 
 	# read resource settings
-	$browser = $term->x_resource('urlLauncher') || 'x-www-browser';
-	if ($term->x_resource('underlineURLs') eq 'true') {
-		$underline = 1;
+	$self->{browser} = $self->x_resource('urlLauncher') || 'x-www-browser';
+	if ($self->x_resource('underlineURLs') eq 'true') {
+		$self->{underline} = 1;
 	}
 
 	()
@@ -68,45 +53,23 @@ sub on_start {
 
 
 sub on_line_update {
-	my ($term, $rn) = @_;
+	my ($self, $row) = @_;
 
-	if ($underline) {
-		my $line = $term->line($rn);
+	if ($self->{underline}) {
+		my $line = $self->line($row);
 		my $text = $line->t;
 		my $rend = $line->r;
 
 		while ($text =~ /$url_matcher/g) {
 			my $url = $1;
-			my ($first, $last) = ($-[1], $+[1] - 1);
-			--$last if $url =~ /["')]$/;
+			my ($beg, $end) = ($-[1], $+[1] - 1);
+			--$end if $url =~ /["')]$/;
 
-			for (@{$rend}[$first .. $last]) {
+			for (@{$rend}[$beg .. $end]) {
 				$_ |= urxvt::RS_Uline;
 			}
 			$line->r($rend);
 		}
-	}
-
-	if ($active) {
-		# workaround for updates in ncurses clients
-		my @sel_beg = $term->selection_beg();
-		my @sel_end = $term->selection_end();
-		if ($sel_beg[0] != $row || $sel_beg[1] != $beg[$n] ||
-				$sel_end[0] != $row || $sel_end[1] != $end[$n]) {
-			$row -= $lastdir;
-			select_next($term, $lastdir, 1);
-		}
-	}
-	
-	()
-}
-
-
-sub on_scroll_back {
-	my ($term, $lines, undef) = @_;
-
-	if ($active) {
-		$row -= $lines;
 	}
 
 	()
@@ -114,22 +77,47 @@ sub on_scroll_back {
 
 
 sub on_user_command {
-	my ($term, $cmd) = @_;
+	my ($self, $cmd) = @_;
 
 	if ($cmd eq 'url-select:select_next') {
-		if (not $active) {
-			$old_view_start = $term->view_start();
-			$old_sel_text = $term->selection();
+		if (not $self->{active}) {
+			activate($self);
 		}
-		select_next($term, -1);
+		select_next($self, -1);
 	}
 
 	()
 }
 
 
-sub on_key_press {
-	if ($active) {
+sub key_press {
+	return 1;
+}
+
+
+sub key_release {
+	my ($self, $event, $keysym) = @_;
+	my $char = chr($keysym);
+
+	if ($keysym == 0xff1b) {
+		# escape
+		deactivate($self);
+		return 1;
+	} elsif ($keysym == 0xff0d) {
+		# return
+		$self->exec_async($self->{browser}, ${$self->{found}[$self->{n}]}[4]);
+		deactivate($self);
+		return 1;
+	} elsif ($char eq 'y') {
+		$self->selection(${$self->{found}[$self->{n}]}[4]);
+		$self->selection_grab($event->{time});
+		deactivate($self);
+		return 1;
+	} elsif ($char eq 'n') {
+		select_next($self, -1);
+		return 1;
+	} elsif ($char eq 'N') {
+		select_next($self, 1);
 		return 1;
 	}
 
@@ -137,55 +125,33 @@ sub on_key_press {
 }
 
 
-sub on_key_release {
-	my ($term, $event, $keysym, undef) = @_;
+sub on_button_release {
+	my ($self, $event) = @_;
 
-	if ($active) {
-		my $char = chr($keysym);
-
-		if ($keysym == 65307) {
-			# escape
-			quit_sel_mode($term);
-			return 1;
-		} elsif ($keysym == 65293) {
-			# return
-			$term->exec_async($browser, $sel_url);
-			quit_sel_mode($term);
-			return 1;
-		} elsif ($char eq 'y') {
-			quit_sel_mode($term);
-			$term->selection($sel_url);
-			return 1;
-		} elsif ($char eq 'n') {
-			select_next($term, -1);
-			return 1;
-		} elsif ($char eq 'N') {
-			select_next($term, 1);
+	if ($self->{active}) {
+		if ($event->{button} == 4 || $event->{button} == 5) {
+			return;
+		} else {
 			return 1;
 		}
 	}
 
-	()
-}
-
-
-sub on_button_release {
-	my ($term, $event) = @_;
-
-	my $mask = $term->ModLevel3Mask | $term->ModMetaMask |
+	my $mask = $self->ModLevel3Mask | $self->ModMetaMask |
 			urxvt::ShiftMask | urxvt::ControlMask;
 
 	if ($event->{button} == 2 && ($event->{state} & $mask) == 0) {
 		my $col = $event->{col};
-		my $line = $term->line($event->{row});
+		my $line = $self->line($event->{row});
 		my $text = $line->t;
 
-		while ($text =~ /($url_matcher)/g) {
-			my ($url, $first, $last) = ($1, $-[1], $+[1] - 1);
+		while ($text =~ /$url_matcher/g) {
+			my ($url, $beg, $end) = ($1, $-[0], $+[0]);
 
-			if ($first <= $col && $last >= $col) {
-				$url =~ s/["')]$//;
-				$term->exec_async($browser, $url);
+			if ($url =~ s/["')]$//) {
+				--$end;
+			}
+			if ($col >= $beg && $col <= $end) {
+				$self->exec_async($self->{browser}, $url);
 				return 1;
 			}
 		}
@@ -196,92 +162,110 @@ sub on_button_release {
 
 
 sub select_next {
-	# $dir < 0: up; > 0: down
-	my ($term, $dir, $redo) = @_;
-	$lastdir = $dir;
+	# $dir < 0: up, > 0: down
+	my ($self, $dir) = @_;
+	my $row = $self->{row};
 
-	if (not $active) {
-		$active = 1;
-		$row = $term->view_start() + $term->nrow;
-	} elsif (!$redo &&
-			(($dir < 0 && $n > 0) || ($dir > 0 && $n < $#beg))) {
+	if (($dir < 0 && $self->{n} > 0) ||
+			($dir > 0 && $self->{n} < $#{ $self->{found} })) {
 		# another url on current line
-		$n += $dir;
-		select_url($term);
+		$self->{n} += $dir;
+		hilight($self);
 		return;
 	}
 
-	@beg = ();
-	@end = ();
+	while (($dir < 0 && $row > $self->top_row) ||
+	       ($dir > 0 && $row < $self->nrow - 1)) {
+		my $line = $self->line($row);
+		$row = ($dir < 0 ? $line->beg : $line->end) + $dir;
+		$line = $self->line($row);
+		my $text = $line->t;
 
-	for (my $i = 0; $i < $term->nrow - $term->top_row; ++$i) {
-		$row += $dir;
-		if ($dir < 0 && $row < $term->top_row) {
-			$row = $term->nrow - 1;
-		} elsif ($dir > 0 && $row >= $term->nrow) {
-			$row = $term->top_row;
-		}
+		if ($text =~ /$url_matcher/g) {
+			delete $self->{found};
 
-		my $line = $term->line($row);
-		$ltext = $line->t;
+			do {
+				my ($beg, $end) = ($-[0], $+[0]);
+				--$end if $& =~ /['")]$/;
+				push @{$self->{found}}, [$line->coord_of($beg),
+						$line->coord_of($end), substr($text, $beg, $end - $beg)];
+			} while ($text =~ /$url_matcher/g);
 
-		while ($ltext =~ /$url_matcher/g) {
-			push @beg, $-[0];
-			push @end, $+[0];
-			--$end[$#end] if $& =~ /["')]$/;
-		}
-
-		if (@beg > 0) {
-			$n = $dir < 0 ? $#beg : 0;
-			select_url($term);
+			$self->{row} = $row;
+			$self->{n} = $dir < 0 ? $#{$self->{found}} : 0;
+			hilight($self);
 			return;
 		}
 	}
 	
-	# no url found
-	quit_sel_mode($term);
+	deactivate($self) unless $self->{found};
 
 	()
 }
 
 
-sub select_url {
-	my ($term) = @_;
+sub hilight {
+	my ($self) = @_;
 
-	# select current url
-	$term->selection_beg($row, $beg[$n]);
-	$term->selection_end($row, $end[$n]);
-	$term->selection_make(0);
+	if ($self->{found}) {
+		if ($self->{row} < $self->view_start() ||
+				$self->{row} >= $self->view_start() + $self->nrow) {
+			# scroll selected url into visible area
+			my $top = $self->{row} - ($self->nrow >> 1);
+			$self->view_start($top < 0 ? $top : 0);
+		}
 
-	# scroll to make it visible
-	if ($row < $term->view_start()) {
-		$term->view_start($row);
-	} elsif ($row >= $term->view_start() + $term->nrow) {
-		$term->view_start($row - $term->nrow + 1);
+		$self->want_refresh();
 	}
 
-	# save url text
-	$sel_url = substr($ltext, $beg[$n], $end[$n] - $beg[$n]);
+	()
+}
+
+
+sub refresh {
+	my ($self) = @_;
+
+	if ($self->{found}) {
+		$self->scr_xor_span(@{$self->{found}[$self->{n}]}[0 .. 3], urxvt::RS_RVid);
+	}
+
+	()
+}
+
+sub activate {
+	my ($self) = @_;
+
+	$self->{active} = 1;
+
+	$self->{row} = $self->view_start() + $self->nrow;
+	$self->{n} = 0;
+	$self->{view_start} = $self->view_start();
+	$self->{pty_ev_events} = $self->pty_ev_events(urxvt::EV_NONE);
+
+	$self->enable(
+		key_press     => \&key_press,
+		key_release   => \&key_release,
+		refresh_begin => \&refresh,
+		refresh_end   => \&refresh,
+	);
 
 	()
 }
 
 
-sub quit_sel_mode {
-	my ($term) = @_;
+sub deactivate {
+	my ($self) = @_;
 
-	$active = 0;
+	$self->disable("key_press", "key_release", "refresh_begin", "refresh_end");
+	$self->view_start($self->{view_start});
+	$self->pty_ev_events($self->{pty_ev_events});
 
-	# select nothing
-	$term->selection_beg(1, 0);
-	$term->selection_end(1, 0);
-	$term->selection_make(0);
+	if ($self->{found}) {
+		delete $self->{found};
+		$self->want_refresh();
+	}
 
-	# restore old primary selection
-	$term->selection($old_sel_text);
-
-	# restore old view start
-	$term->view_start($old_view_start);
+	$self->{active} = 0;
 
 	()
 }
