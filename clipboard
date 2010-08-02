@@ -1,0 +1,66 @@
+#! perl -w
+# Author:  Bert Muennich
+# Website: http://www.github.com/muennich/urxvt-perls
+# License: GPLv2
+
+# Use keyboard shortcuts to copy the selection to the clipboard and to paste
+# the clipboard contents (optionally escaping all special characters).
+# Requires xsel to be installed!
+
+# Usage: put the following lines in your .Xdefaults:
+#   URxvt.perl-ext-common: clipboard
+#   URxvt.keysym.M-c:   perl:clipboard:copy
+#   URxvt.keysym.M-v:   perl:clipboard:paste
+#   URxvt.keysym.M-C-v: perl:clipboard:paste_escaped
+
+# The use of the functions should be self-explanatory!
+
+use strict;
+use utf8;
+
+sub copy {
+   my ($term) = @_;
+
+   open(CLIPBOARD, "| xsel -ib");
+   my $sel = $term->selection();
+   utf8::encode($sel);
+   print CLIPBOARD $sel;
+   close(CLIPBOARD);
+
+   ()
+}
+
+sub paste {
+   my ($term) = @_;
+
+   my $str = `xsel -ob`;
+   $str =~ tr/\n/\r/;
+   $term->tt_write($str);
+
+   ()
+}
+
+sub paste_escaped {
+   my ($term) = @_;
+
+   my $str = `xsel -ob`;
+   $str =~ tr/\n/\r/;
+   $str =~ s/([!#\$%&\*\(\) ='"\\\|\[\]`~,<>\?])/\\\1/g;
+   $term->tt_write($str);
+
+   ()
+}
+
+sub on_user_command {
+   my ($term, $cmd) = @_;
+
+   if ($cmd eq "clipboard:copy") {
+      $term->copy;
+   } elsif ($cmd eq "clipboard:paste") {
+      $term->paste;
+   } elsif ($cmd eq "clipboard:paste_escaped") {
+      $term->paste_escaped;
+   }
+
+   ()
+}
