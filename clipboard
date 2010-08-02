@@ -19,10 +19,10 @@ use strict;
 use utf8;
 
 sub copy {
-   my ($term) = @_;
+   my ($self) = @_;
 
    open(CLIPBOARD, "| xsel -ib");
-   my $sel = $term->selection();
+   my $sel = $self->selection();
    utf8::encode($sel);
    print CLIPBOARD $sel;
    close(CLIPBOARD);
@@ -31,35 +31,35 @@ sub copy {
 }
 
 sub paste {
-   my ($term) = @_;
+   my ($self) = @_;
 
    my $str = `xsel -ob`;
    $str =~ tr/\n/\r/;
-   $term->tt_write($str);
+   $self->tt_write($str);
 
    ()
 }
 
 sub paste_escaped {
-   my ($term) = @_;
+   my ($self) = @_;
 
    my $str = `xsel -ob`;
    $str =~ tr/\n/\r/;
    $str =~ s/([!#\$%&\*\(\) ='"\\\|\[\]`~,<>\?])/\\\1/g;
-   $term->tt_write($str);
+   $self->tt_write($str);
 
    ()
 }
 
 sub on_user_command {
-   my ($term, $cmd) = @_;
+   my ($self, $cmd) = @_;
 
    if ($cmd eq "clipboard:copy") {
-      $term->copy;
+      $self->copy;
    } elsif ($cmd eq "clipboard:paste") {
-      $term->paste;
+      $self->paste;
    } elsif ($cmd eq "clipboard:paste_escaped") {
-      $term->paste_escaped;
+      $self->paste_escaped;
    }
 
    ()
