@@ -13,8 +13,8 @@
 # - URxvt.keysym.M-u: perl:url-select:select_next
 
 # Use Meta-u to activate URL selection mode, then use the following keys:
-# - 'n':    select next URL (also with Meta-u)
-# - 'N':    select previous URL
+# - 'k':    select next upward URL (also with Meta-u)
+# - 'j':    select next downward URL
 # - Return: open selected URL in browser and quit selection mode
 # - 'y':    copy (yank) selected URL and quit selection mode
 # - Escape: cancel URL selection mode
@@ -91,11 +91,6 @@ sub on_user_command {
 
 
 sub key_press {
-	return 1;
-}
-
-
-sub key_release {
 	my ($self, $event, $keysym) = @_;
 	my $char = chr($keysym);
 
@@ -113,10 +108,10 @@ sub key_release {
 		$self->selection_grab($event->{time});
 		deactivate($self);
 		return 1;
-	} elsif ($char eq 'n') {
+	} elsif ($char eq 'k') {
 		select_next($self, -1);
 		return 1;
-	} elsif ($char eq 'N') {
+	} elsif ($char eq 'j') {
 		select_next($self, 1);
 		return 1;
 	}
@@ -232,6 +227,7 @@ sub refresh {
 	()
 }
 
+
 sub activate {
 	my ($self) = @_;
 
@@ -244,7 +240,6 @@ sub activate {
 
 	$self->enable(
 		key_press     => \&key_press,
-		key_release   => \&key_release,
 		refresh_begin => \&refresh,
 		refresh_end   => \&refresh,
 	);
@@ -256,7 +251,7 @@ sub activate {
 sub deactivate {
 	my ($self) = @_;
 
-	$self->disable("key_press", "key_release", "refresh_begin", "refresh_end");
+	$self->disable("key_press", "refresh_begin", "refresh_end");
 	$self->view_start($self->{view_start});
 	$self->pty_ev_events($self->{pty_ev_events});
 
