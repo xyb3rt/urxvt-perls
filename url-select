@@ -228,6 +228,11 @@ sub refresh {
 }
 
 
+sub tt_write {
+	return 1;
+}
+
+
 sub activate {
 	my ($self) = @_;
 
@@ -242,6 +247,7 @@ sub activate {
 		key_press     => \&key_press,
 		refresh_begin => \&refresh,
 		refresh_end   => \&refresh,
+		tt_write      => \&tt_write,
 	);
 
 	()
@@ -251,7 +257,7 @@ sub activate {
 sub deactivate {
 	my ($self) = @_;
 
-	$self->disable("key_press", "refresh_begin", "refresh_end");
+	$self->disable("key_press", "refresh_begin", "refresh_end", "tt_write");
 	$self->view_start($self->{view_start});
 	$self->pty_ev_events($self->{pty_ev_events});
 
