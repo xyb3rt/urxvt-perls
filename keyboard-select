@@ -6,7 +6,7 @@
 # Use keyboard shortcuts to select and copy text.
 
 # Usage: put the following lines in your .Xdefaults:
-# - URxvt.perl-ext-common: keyboard-select
+# - URxvt.perl-ext-common: ...,keyboard-select
 # - URxvt.keysym.M-Escape: perl:keyboard-select:activate
 
 # Use Meta-Escape to activate selection mode, then use the following keys:
