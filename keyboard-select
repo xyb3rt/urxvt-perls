@@ -14,8 +14,11 @@
 # - j,down:  move cursor down
 # - k,up:    move cursor up
 # - l,right: move cursor right
-# - Return:  start/copy selection
-# - Escape:  cancel keyboard selection mode
+# - v:       toggle normal selection
+# - V:       toggle linewise selection
+# - Ctrl-v:  toggle blockwise selection
+# - y:       copy selected text to primary buffer and quit selection mode
+# - Escape:  cancel whole keyboard selection mode
 
 
 use strict;
@@ -40,28 +43,21 @@ sub key_press {
 	if ($keysym == 0xff1b) {
 		# escape
 		deactivate($self);
-	} elsif ($keysym == 0xff0d) {
-		# return
-		if ($self->{selection}) {
-			my ($br, $bc, $er, $ec) = calc_span($self, 1);
+	} elsif ($char eq 'y') {
+		if ($self->{select}) {
+			my ($br, $bc, $er, $ec) = calc_span($self);
 			$self->selection_beg($br, $bc);
 			$self->selection_end($er, $ec);
-			$self->selection_make($event->{time}, $self->{mode} eq 'b');
+			$self->selection_make($event->{time}, $self->{select} eq 'b');
 			deactivate($self);
-		} else {
-			$self->{selection} = 1;
-			$self->{ar} = $self->{cr};
-			$self->{ac} = $self->{cc};
-			$self->want_refresh();
 		}
 	} elsif ($char eq 'V') {
-		change_mode($self, 'line');
+		toggle_select($self, 'l');
 	} elsif ($char eq 'v') {
 		if ($event->{state} & urxvt::ControlMask) {
-			# TODO: fix block mode handling in calc_span
-			#change_mode($self, 'block');
+			toggle_select($self, 'b');
 		} else {
-			change_mode($self, 'normal');
+			toggle_select($self, 'n');
 		}
 	} elsif ($char eq 'k' || $keysym == 0xff52) {
 		move_cursor($self, 'up');
@@ -87,18 +83,19 @@ sub tt_write {
 sub refresh {
 	my ($self) = @_;
 
-	if ($self->{selection}) {
+	if ($self->{select}) {
 		my ($br, $bc, $er, $ec) = calc_span($self);
 
-		if ($self->{mode} eq 'b') {
+		if ($self->{select} eq 'b') {
 			$self->scr_xor_rect($br, $bc, $er, $ec, urxvt::RS_RVid);
 		} else {
 			$self->scr_xor_span($br, $bc, $er, $ec, urxvt::RS_RVid);
+		}
 
-			if ($self->{mode} ne 'l') {
-				$self->scr_xor_span($self->{cr}, $self->{cc},
-						$self->{cr}, $self->{cc} + 1, urxvt::RS_RVid);
-			}
+		if ($self->{select} ne 'l') {
+			# make the cursor visible again
+			$self->scr_xor_span($self->{cr}, $self->{cc},
+					$self->{cr}, $self->{cc} + 1, urxvt::RS_RVid);
 		}
 	}
 
@@ -120,6 +117,7 @@ sub move_cursor {
 			$self->screen_cur($self->{cr}, ++$self->{cc});
 		}
 
+		# scroll the current cursor position into visible area
 		if ($self->{cr} < $self->view_start()) {
 			$self->view_start($self->{cr});
 		} elsif ($self->{cr} >= $self->view_start() + $self->nrow) {
@@ -137,8 +135,7 @@ sub activate {
 	my ($self) = @_;
 
 	$self->{active} = 1;
-	$self->{selection} = 0;
-	$self->{mode} = 'n';
+	$self->{select} = "";
 
 	($self->{cr}, $self->{cc}) = $self->screen_cur();
 	$self->{oldcr} = $self->{cr};
@@ -181,26 +178,21 @@ sub deactivate {
 }
 
 
-sub change_mode {
+sub toggle_select {
 	my ($self, $mode) = @_;
 
 	if ($self->{active}) {
-		my $old_mode = $self->{mode};
-
-		if ($mode eq 'line') {
-			$self->{mode} = 'l';
-			print "change_mode line\n";
-		} elsif ($mode eq 'block') {
-			$self->{mode} = 'b';
-			print "change_mode block\n";
+		if ($self->{select} eq $mode) {
+			$self->{select} = '';
 		} else {
-			$self->{mode} = 'n';
-			print "change_mode normal\n";
+			if (not $self->{select}) {
+				$self->{ar} = $self->{cr};
+				$self->{ac} = $self->{cc};
+			}
+			$self->{select} = $mode;
 		}
 
-		if ($old_mode ne $self->{mode}) {
-			$self->want_refresh();
-		}
+		$self->want_refresh();
 	}
 
 	()
@@ -208,7 +200,7 @@ sub change_mode {
 
 
 sub calc_span {
-	my ($self, $copy) = @_;
+	my ($self) = @_;
 	my ($br, $bc, $er, $ec);
 	
 	if ($self->{cr} < $self->{ar}) {
@@ -228,14 +220,16 @@ sub calc_span {
 		$ec = $self->{cc} > $self->{ac} ? $self->{cc} : $self->{ac};
 	}
 
-	if ($self->{mode} eq 'l') {
+	if ($self->{select} eq 'l') {
 		$bc = 0;
 		$ec = $self->ncol;
 	} else {
+		if ($self->{select} eq 'b') {
+			($br, $er) = ($er, $br) if $br > $er;
+			($bc, $ec) = ($ec, $bc) if $bc > $ec;
+		}
 		++$ec;
 	}
-
-	#print "($br,$bc) - ($er,$ec)\n";
 
 	return ($br, $bc, $er, $ec);
 }
