@@ -1,0 +1,241 @@
+#! perl -w
+# Author:   Bert Muennich
+# Website:  http://www.github.com/muennich/urxvt-perls
+# License:  GPLv2
+
+# Use keyboard shortcuts to select and copy text.
+
+# Usage: put the following lines in your .Xdefaults:
+# - URxvt.perl-ext-common: keyboard-select
+# - URxvt.keysym.M-Escape: perl:keyboard-select:activate
+
+# Use Meta-Escape to activate selection mode, then use the following keys:
+# - h,left:  move cursor left
+# - j,down:  move cursor down
+# - k,up:    move cursor up
+# - l,right: move cursor right
+# - Return:  start/copy selection
+# - Escape:  cancel keyboard selection mode
+
+
+use strict;
+
+sub on_user_command {
+	my ($self, $cmd) = @_;
+
+	if ($cmd eq 'keyboard-select:activate') {
+		if (not $self->{active}) {
+			activate($self);
+		}
+	}
+
+	()
+}
+
+
+sub key_press {
+	my ($self, $event, $keysym) = @_;
+	my $char = chr($keysym);
+
+	if ($keysym == 0xff1b) {
+		# escape
+		deactivate($self);
+	} elsif ($keysym == 0xff0d) {
+		# return
+		if ($self->{selection}) {
+			my ($br, $bc, $er, $ec) = calc_span($self, 1);
+			$self->selection_beg($br, $bc);
+			$self->selection_end($er, $ec);
+			$self->selection_make($event->{time}, $self->{mode} eq 'b');
+			deactivate($self);
+		} else {
+			$self->{selection} = 1;
+			$self->{ar} = $self->{cr};
+			$self->{ac} = $self->{cc};
+			$self->want_refresh();
+		}
+	} elsif ($char eq 'V') {
+		change_mode($self, 'line');
+	} elsif ($char eq 'v') {
+		if ($event->{state} & urxvt::ControlMask) {
+			# TODO: fix block mode handling in calc_span
+			#change_mode($self, 'block');
+		} else {
+			change_mode($self, 'normal');
+		}
+	} elsif ($char eq 'k' || $keysym == 0xff52) {
+		move_cursor($self, 'up');
+	} elsif ($char eq 'j' || $keysym == 0xff54) {
+		move_cursor($self, 'down');
+	} elsif ($char eq 'h' || $keysym == 0xff51) {
+		move_cursor($self, 'left');
+	} elsif ($char eq 'l' || $keysym == 0xff53) {
+		move_cursor($self, 'right');
+	} else {
+		return;
+	}
+
+	return 1;
+}
+
+
+sub tt_write {
+	return 1;
+}
+
+
+sub refresh {
+	my ($self) = @_;
+
+	if ($self->{selection}) {
+		my ($br, $bc, $er, $ec) = calc_span($self);
+
+		if ($self->{mode} eq 'b') {
+			$self->scr_xor_rect($br, $bc, $er, $ec, urxvt::RS_RVid);
+		} else {
+			$self->scr_xor_span($br, $bc, $er, $ec, urxvt::RS_RVid);
+		}
+	}
+
+	()
+}
+
+
+sub move_cursor {
+	my ($self, $dir) = @_;
+
+	if ($self->{active}) {
+		if ($dir eq 'up' && $self->{cr} > $self->top_row) {
+			$self->screen_cur(--$self->{cr}, $self->{cc});
+		} elsif ($dir eq 'down' && $self->{cr} < $self->nrow - 1) {
+			$self->screen_cur(++$self->{cr}, $self->{cc});
+		} elsif ($dir eq 'left' && $self->{cc} > 0) {
+			$self->screen_cur($self->{cr}, --$self->{cc});
+		} elsif ($dir eq 'right' && $self->{cc} < $self->ncol - 1) {
+			$self->screen_cur($self->{cr}, ++$self->{cc});
+		}
+
+		if ($self->{cr} < $self->view_start()) {
+			$self->view_start($self->{cr});
+		} elsif ($self->{cr} >= $self->view_start() + $self->nrow) {
+			$self->view_start($self->{cr} - $self->nrow + 1);
+		}
+
+		$self->want_refresh();
+	}
+	
+	()
+}
+
+
+sub activate {
+	my ($self) = @_;
+
+	$self->{active} = 1;
+	$self->{selection} = 0;
+	$self->{mode} = 'n';
+
+	($self->{cr}, $self->{cc}) = $self->screen_cur();
+	$self->{oldcr} = $self->{cr};
+	$self->{oldcc} = $self->{cc};
+
+	$self->selection_beg(1, 0);
+	$self->selection_end(1, 0);
+
+	$self->{view_start} = $self->view_start();
+	$self->{pty_ev_events} = $self->pty_ev_events(urxvt::EV_NONE);
+
+	$self->enable(
+		key_press     => \&key_press,
+		refresh_begin => \&refresh,
+		refresh_end   => \&refresh,
+		tt_write      => \&tt_write,
+	);
+
+	()
+}
+
+
+sub deactivate {
+	my ($self) = @_;
+
+	$self->screen_cur($self->{oldcr}, $self->{oldcc});
+
+	$self->selection_beg(1, 0);
+	$self->selection_end(1, 0);
+
+	$self->disable("key_press", "refresh_begin", "refresh_end", "tt_write");
+	$self->view_start($self->{view_start});
+	$self->pty_ev_events($self->{pty_ev_events});
+
+	$self->want_refresh();
+
+	$self->{active} = 0;
+
+	()
+}
+
+
+sub change_mode {
+	my ($self, $mode) = @_;
+
+	if ($self->{active}) {
+		my $old_mode = $self->{mode};
+
+		if ($mode eq 'line') {
+			$self->{mode} = 'l';
+			print "change_mode line\n";
+		} elsif ($mode eq 'block') {
+			$self->{mode} = 'b';
+			print "change_mode block\n";
+		} else {
+			$self->{mode} = 'n';
+			print "change_mode normal\n";
+		}
+
+		if ($old_mode ne $self->{mode}) {
+			$self->want_refresh();
+		}
+	}
+
+	()
+}
+
+
+sub calc_span {
+	my ($self, $copy) = @_;
+	my ($br, $bc, $er, $ec);
+	
+	if ($self->{cr} < $self->{ar}) {
+		$br = $self->{cr};
+		$bc = $self->{cc};
+		$er = $self->{ar};
+		$ec = $self->{ac};
+	} elsif ($self->{cr} > $self->{ar}) {
+		$br = $self->{ar};
+		$bc = $self->{ac};
+		$er = $self->{cr};
+		$ec = $self->{cc};
+	} else {
+		$br = $self->{cr};
+		$bc = $self->{cc} < $self->{ac} ? $self->{cc} : $self->{ac};
+		$er = $self->{cr};
+		$ec = $self->{cc} > $self->{ac} ? $self->{cc} : $self->{ac};
+	}
+
+	if ($self->{mode} eq 'l') {
+		$bc = 0;
+		$ec = $self->ncol;
+	} else {
+		if (!$copy && $bc == $self->{cc}) {
+			++$bc;
+		}
+		if ($copy || $ec != $self->{cc} || $br != $er) {
+			++$ec;
+		}
+	}
+
+	#print "($br,$bc) - ($er,$ec)\n";
+
+	return ($br, $bc, $er, $ec);
+}
