@@ -67,8 +67,6 @@ sub key_press {
 		move_cursor($self, 'left');
 	} elsif ($char eq 'l' || $keysym == 0xff53) {
 		move_cursor($self, 'right');
-	} else {
-		return;
 	}
 
 	return 1;

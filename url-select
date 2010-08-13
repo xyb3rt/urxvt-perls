@@ -10,19 +10,19 @@
 # it also makes URLs clickable with the middle mouse button.
 
 # Usage: put the following lines in your .Xdefaults:
-# - URxvt.perl-ext-common: url-select
-# - URxvt.keysym.M-u: perl:url-select:select_next
+#   URxvt.perl-ext-common: ...,url-select
+#   URxvt.keysym.M-u: perl:url-select:select_next
 
 # Use Meta-u to activate URL selection mode, then use the following keys:
-# - 'k':    select next upward URL (also with Meta-u)
-# - 'j':    select next downward URL
-# - Return: open selected URL in browser and quit selection mode
-# - 'y':    copy (yank) selected URL and quit selection mode
-# - Escape: cancel URL selection mode
+#   k:      select next upward URL (also with Meta-u)
+#   j:      select next downward URL
+#   Return: open selected URL in browser and quit selection mode
+#   y:      copy (yank) selected URL and quit selection mode
+#   Escape: cancel URL selection mode
 
 # Options:
-# - URxvt.urlLauncher:   browser/command to open selected URL with
-# - URxvt.underlineURLs: if set to true, all URLs get underlined
+#   URxvt.urlLauncher:   browser/command to open selected URL with
+#   URxvt.underlineURLs: if set to true, all URLs get underlined
 
 
 use strict;
@@ -98,26 +98,21 @@ sub key_press {
 	if ($keysym == 0xff1b) {
 		# escape
 		deactivate($self);
-		return 1;
 	} elsif ($keysym == 0xff0d) {
 		# return
 		$self->exec_async($self->{browser}, ${$self->{found}[$self->{n}]}[4]);
 		deactivate($self);
-		return 1;
 	} elsif ($char eq 'y') {
 		$self->selection(${$self->{found}[$self->{n}]}[4]);
 		$self->selection_grab($event->{time});
 		deactivate($self);
-		return 1;
 	} elsif ($char eq 'k') {
 		select_next($self, -1);
-		return 1;
 	} elsif ($char eq 'j') {
 		select_next($self, 1);
-		return 1;
 	}
 
-	()
+	return 1;
 }
 
 

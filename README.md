@@ -69,7 +69,7 @@ Requires xsel to be installed!
 
 After installing, put the folling lines in your .Xdefaults:
 
-    URxvt.perl-ext-common: clipboard
+    URxvt.perl-ext-common: ...,clipboard
     URxvt.keysym.M-c:   perl:clipboard:copy
     URxvt.keysym.M-v:   perl:clipboard:paste
     URxvt.keysym.M-C-v: perl:clipboard:paste_escaped
