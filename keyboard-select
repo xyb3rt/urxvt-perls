@@ -94,6 +94,11 @@ sub refresh {
 			$self->scr_xor_rect($br, $bc, $er, $ec, urxvt::RS_RVid);
 		} else {
 			$self->scr_xor_span($br, $bc, $er, $ec, urxvt::RS_RVid);
+
+			if ($self->{mode} ne 'l') {
+				$self->scr_xor_span($self->{cr}, $self->{cc},
+						$self->{cr}, $self->{cc} + 1, urxvt::RS_RVid);
+			}
 		}
 	}
 
@@ -227,12 +232,7 @@ sub calc_span {
 		$bc = 0;
 		$ec = $self->ncol;
 	} else {
-		if (!$copy && $bc == $self->{cc}) {
-			++$bc;
-		}
-		if ($copy || $ec != $self->{cc} || $br != $er) {
-			++$ec;
-		}
+		++$ec;
 	}
 
 	#print "($br,$bc) - ($er,$ec)\n";
