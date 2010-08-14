@@ -6,19 +6,16 @@
 # Use keyboard shortcuts to select and copy text.
 
 # Usage: put the following lines in your .Xdefaults:
-# - URxvt.perl-ext-common: ...,keyboard-select
-# - URxvt.keysym.M-Escape: perl:keyboard-select:activate
+#   URxvt.perl-ext-common: ...,keyboard-select
+#   URxvt.keysym.M-Escape: perl:keyboard-select:activate
 
 # Use Meta-Escape to activate selection mode, then use the following keys:
-# - h,left:  move cursor left
-# - j,down:  move cursor down
-# - k,up:    move cursor up
-# - l,right: move cursor right
-# - v:       toggle normal selection
-# - V:       toggle linewise selection
-# - Ctrl-v:  toggle blockwise selection
-# - y:       copy selected text to primary buffer and quit selection mode
-# - Escape:  cancel whole keyboard selection mode
+#   h/j/k/l:    move cursor left/down/up/right (also with arrow keys)
+#   g/G/0/^/$:  vi-like cursor movement keys
+#   H/M/L:      move cursor to first/center/last line of visible area
+#   v/V/Ctrl-v: toggle normal/linewise/blockwise selection
+#   y,Return:   copy selected text to primary buffer and quit selection mode
+#   Escape:     cancel whole keyboard selection mode
 
 
 use strict;
@@ -43,7 +40,7 @@ sub key_press {
 	if ($keysym == 0xff1b) {
 		# escape
 		deactivate($self);
-	} elsif ($char eq 'y') {
+	} elsif ($char eq 'y' || $keysym == 0xff0d) {
 		if ($self->{select}) {
 			my ($br, $bc, $er, $ec) = calc_span($self);
 			$self->selection_beg($br, $bc);
@@ -60,13 +57,15 @@ sub key_press {
 			toggle_select($self, 'n');
 		}
 	} elsif ($char eq 'k' || $keysym == 0xff52) {
-		move_cursor($self, 'up');
+		move_cursor($self, 'k');
 	} elsif ($char eq 'j' || $keysym == 0xff54) {
-		move_cursor($self, 'down');
+		move_cursor($self, 'j');
 	} elsif ($char eq 'h' || $keysym == 0xff51) {
-		move_cursor($self, 'left');
+		move_cursor($self, 'h');
 	} elsif ($char eq 'l' || $keysym == 0xff53) {
-		move_cursor($self, 'right');
+		move_cursor($self, 'l');
+	} elsif ('gG0^$HML' =~ m/$char/) {
+		move_cursor($self, $char);
 	}
 
 	return 1;
@@ -102,18 +101,38 @@ sub refresh {
 
 
 sub move_cursor {
-	my ($self, $dir) = @_;
+	my ($self, $key) = @_;
 
 	if ($self->{active}) {
-		if ($dir eq 'up' && $self->{cr} > $self->top_row) {
-			$self->screen_cur(--$self->{cr}, $self->{cc});
-		} elsif ($dir eq 'down' && $self->{cr} < $self->nrow - 1) {
-			$self->screen_cur(++$self->{cr}, $self->{cc});
-		} elsif ($dir eq 'left' && $self->{cc} > 0) {
-			$self->screen_cur($self->{cr}, --$self->{cc});
-		} elsif ($dir eq 'right' && $self->{cc} < $self->ncol - 1) {
-			$self->screen_cur($self->{cr}, ++$self->{cc});
+		if ($key eq 'k' && $self->{cr} > $self->top_row) {
+			--$self->{cr};
+		} elsif ($key eq 'j' && $self->{cr} < $self->nrow - 1) {
+			++$self->{cr};
+		} elsif ($key eq 'h' && $self->{cc} > 0) {
+			--$self->{cc};
+		} elsif ($key eq 'l' && $self->{cc} < $self->ncol - 1) {
+			++$self->{cc};
+		} elsif ($key eq 'g') {
+			($self->{cr}, $self->{cc}) = ($self->top_row, 0);
+		} elsif ($key eq 'G') {
+			($self->{cr}, $self->{cc}) = ($self->nrow - 1, 0);
+		} elsif ($key eq '0') {
+			$self->{cc} = 0;
+		} elsif ($key eq '^') {
+			my $ltxt = $self->line($self->{cr})->t;
+			$self->{cc} = $ltxt =~ m/^[ \t]+/ ? $+[0] : 0;
+		} elsif ($key eq '$') {
+			my $ltxt = $self->line($self->{cr})->t;
+			$self->{cc} = ($ltxt =~ m/$/ ? $-[0] : $self->ncol) - 1;
+		} elsif ($key eq 'H') {
+			$self->{cr} = $self->view_start();
+		} elsif ($key eq 'M') {
+			$self->{cr} = $self->view_start() + $self->nrow / 2;
+		} elsif ($key eq 'L') {
+			$self->{cr} = $self->view_start() + $self->nrow - 1;
 		}
+
+		$self->screen_cur($self->{cr}, $self->{cc});
 
 		# scroll the current cursor position into visible area
 		if ($self->{cr} < $self->view_start()) {
