@@ -64,7 +64,7 @@ sub key_press {
 		move_cursor($self, 'h');
 	} elsif ($char eq 'l' || $keysym == 0xff53) {
 		move_cursor($self, 'l');
-	} elsif ('gG0^$HML' =~ m/$char/) {
+	} elsif ('gG0^$HML' =~ m/\Q$char\E/) {
 		move_cursor($self, $char);
 	}
 
@@ -119,8 +119,9 @@ sub move_cursor {
 		} elsif ($key eq '0') {
 			$self->{cc} = 0;
 		} elsif ($key eq '^') {
-			my $ltxt = $self->line($self->{cr})->t;
-			$self->{cc} = $ltxt =~ m/^[ \t]+/ ? $+[0] : 0;
+			my $ltxt = $self->special_decode($self->line($self->{cr})->t);
+			while ($ltxt =~ s/^( *)\t/$1 . " " x (8 - length($1) % 8)/e) {}
+			$self->{cc} = $ltxt =~ m/^ +/ ? $+[0] : 0;
 		} elsif ($key eq '$') {
 			my $ltxt = $self->line($self->{cr})->t;
 			$self->{cc} = ($ltxt =~ m/$/ ? $-[0] : $self->ncol) - 1;
