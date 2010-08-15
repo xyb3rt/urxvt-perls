@@ -152,6 +152,7 @@ sub move_cursor {
 			$self->view_start($self->{cr} - $self->nrow + 1);
 		}
 
+		status_area($self);
 		$self->want_refresh();
 	}
 	
@@ -164,6 +165,7 @@ sub activate {
 
 	$self->{active} = 1;
 	$self->{select} = "";
+	$self->{overlay_len} = 0;
 
 	($self->{cr}, $self->{cc}) = $self->screen_cur();
 	$self->{oldcr} = $self->{cr};
@@ -182,6 +184,8 @@ sub activate {
 		tt_write      => \&tt_write,
 	);
 
+	status_area($self);
+
 	()
 }
 
@@ -194,6 +198,8 @@ sub deactivate {
 	$self->selection_beg(1, 0);
 	$self->selection_end(1, 0);
 
+	delete $self->{overlay} if $self->{overlay};
+
 	$self->disable("key_press", "refresh_begin", "refresh_end", "tt_write");
 	$self->view_start($self->{view_start});
 	$self->pty_ev_events($self->{pty_ev_events});
@@ -201,6 +207,40 @@ sub deactivate {
 	$self->want_refresh();
 
 	$self->{active} = 0;
+
+	()
+}
+
+
+sub status_area {
+	my ($self) = @_;
+
+	my $lines = $self->top_row < 0 ?
+			abs($self->top_row) + $self->nrow : $self->nrow;
+	my $row = $self->{cr} < 0 ?
+			$self->{cr} - $self->top_row : abs($self->top_row) + $self->{cr};
+	my $text = sprintf("%d,%d", $row + 1, $self->{cc} + 1);
+
+	if ($self->{select}) {
+		my ($br, $bc, $er, $ec) = calc_span($self);
+		if ($br == $er) {
+			$text .= sprintf("  %d", $ec - $bc);
+		} else {
+			$text .= sprintf("  %d", $er - $br + 1);
+		}
+	}
+
+	my $text_len = length($text);
+
+	if ($self->{overlay_len} != $text_len) {
+		delete $self->{overlay} if $self->{overlay};
+		$self->{overlay} = $self->overlay(-1, -1, $text_len, 1,
+				urxvt::OVERLAY_RSTYLE, 0);
+		$self->{overlay_len} = $text_len;
+	}
+
+	$self->{overlay}->set(0, 0, $self->special_encode($text));
+	$self->{overlay}->show();
 
 	()
 }
@@ -220,6 +260,7 @@ sub toggle_select {
 			$self->{select} = $mode;
 		}
 
+		status_area($self);
 		$self->want_refresh();
 	}
 
