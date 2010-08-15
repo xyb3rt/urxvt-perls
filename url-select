@@ -100,10 +100,10 @@ sub key_press {
 		deactivate($self);
 	} elsif ($keysym == 0xff0d) {
 		# return
-		$self->exec_async($self->{browser}, ${$self->{found}[$self->{n}]}[4]);
+		$self->exec_async($self->{browser}, ${$self->{found}[$self->{i}]}[4]);
 		deactivate($self);
 	} elsif ($char eq 'y') {
-		$self->selection(${$self->{found}[$self->{n}]}[4]);
+		$self->selection(${$self->{found}[$self->{i}]}[4]);
 		$self->selection_grab($event->{time});
 		deactivate($self);
 	} elsif ($char eq 'k') {
@@ -157,10 +157,11 @@ sub select_next {
 	my ($self, $dir) = @_;
 	my $row = $self->{row};
 
-	if (($dir < 0 && $self->{n} > 0) ||
-			($dir > 0 && $self->{n} < $#{ $self->{found} })) {
+	if (($dir < 0 && $self->{i} > 0) ||
+			($dir > 0 && $self->{i} < $#{ $self->{found} })) {
 		# another url on current line
-		$self->{n} += $dir;
+		$self->{num} += $dir;
+		$self->{i} += $dir;
 		hilight($self);
 		return;
 	}
@@ -183,7 +184,8 @@ sub select_next {
 			} while ($text =~ /$url_matcher/g);
 
 			$self->{row} = $row;
-			$self->{n} = $dir < 0 ? $#{$self->{found}} : 0;
+			$self->{num} += $dir;
+			$self->{i} = $dir < 0 ? $#{$self->{found}} : 0;
 			hilight($self);
 			return;
 		}
@@ -206,6 +208,9 @@ sub hilight {
 			$self->view_start($top < 0 ? $top : 0);
 		}
 
+		my $sign = $self->{num} < 0 ? "-" : $self->{num} > 0 ? "+" : " ";
+		status_area($self, sprintf("%s%03d", $sign, abs($self->{num})));
+
 		$self->want_refresh();
 	}
 
@@ -217,8 +222,23 @@ sub refresh {
 	my ($self) = @_;
 
 	if ($self->{found}) {
-		$self->scr_xor_span(@{$self->{found}[$self->{n}]}[0 .. 3], urxvt::RS_RVid);
+		$self->scr_xor_span(@{$self->{found}[$self->{i}]}[0 .. 3], urxvt::RS_RVid);
 	}
+
+	()
+}
+
+
+sub status_area {
+	my ($self, $text) = @_;
+
+	if (not $self->{overlay}) {
+		$self->{overlay} = $self->overlay(-1, -1, length($text), 1,
+				urxvt::OVERLAY_RSTYLE, 0);
+	}
+
+	$self->{overlay}->set(0, 0, $self->special_encode($text));
+	$self->{overlay}->show();
 
 	()
 }
@@ -235,7 +255,9 @@ sub activate {
 	$self->{active} = 1;
 
 	$self->{row} = $self->view_start() + $self->nrow;
-	$self->{n} = 0;
+	$self->{num} = 1;
+	$self->{i} = 0;
+
 	$self->{view_start} = $self->view_start();
 	$self->{pty_ev_events} = $self->pty_ev_events(urxvt::EV_NONE);
 
@@ -257,10 +279,10 @@ sub deactivate {
 	$self->view_start($self->{view_start});
 	$self->pty_ev_events($self->{pty_ev_events});
 
-	if ($self->{found}) {
-		delete $self->{found};
-		$self->want_refresh();
-	}
+	delete $self->{overlay} if $self->{overlay};
+	delete $self->{found} if $self->{found};
+
+	$self->want_refresh();
 
 	$self->{active} = 0;
 
