@@ -13,6 +13,8 @@
 #   h/j/k/l:    move cursor left/down/up/right (also with arrow keys)
 #   g/G/0/^/$:  vi-like cursor movement keys
 #   H/M/L:      move cursor to first/center/last line of visible area
+#   Ctrl-f/b:   move cursor one screen down/up
+#   Ctrl-d/u:   move cursor half a screen down/up
 #   v/V/Ctrl-v: toggle normal/linewise/blockwise selection
 #   y,Return:   copy selected text to primary buffer and quit selection mode
 #   Escape:     cancel whole keyboard selection mode
@@ -64,6 +66,8 @@ sub key_press {
 		move_cursor($self, 'h');
 	} elsif ($char eq 'l' || $keysym == 0xff53) {
 		move_cursor($self, 'l');
+	} elsif ('fbdu' =~ m/\Q$char\E/ && $event->{state} & urxvt::ControlMask) {
+		move_cursor($self, $char);
 	} elsif ('gG0^$HML' =~ m/\Q$char\E/) {
 		move_cursor($self, $char);
 	}
@@ -112,6 +116,12 @@ sub move_cursor {
 			--$self->{cc};
 		} elsif ($key eq 'l' && $self->{cc} < $self->ncol - 1) {
 			++$self->{cc};
+		} elsif ($key eq 'f' || $key eq 'd') {
+			$self->{cr} += $key eq 'd' ? ($self->nrow - 1) / 2 : $self->nrow - 1;
+			$self->{cr} = $self->nrow - 1 if $self->{cr} > $self->nrow;
+		} elsif ($key eq 'b' || $key eq 'u') {
+			$self->{cr} -= $key eq 'u' ? ($self->nrow - 1) / 2 : $self->nrow - 1;
+			$self->{cr} = $self->top_row if $self->{cr} < $self->top_row;
 		} elsif ($key eq 'g') {
 			($self->{cr}, $self->{cc}) = ($self->top_row, 0);
 		} elsif ($key eq 'G') {
