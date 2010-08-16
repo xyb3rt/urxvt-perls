@@ -1,6 +1,7 @@
 #! perl -w
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
+# Version:  1.0
 # License:  GPLv2
 
 # Use keyboard shortcuts to select and copy text.
@@ -11,13 +12,12 @@
 
 # Use Meta-Escape to activate selection mode, then use the following keys:
 #   h/j/k/l:    move cursor left/down/up/right (also with arrow keys)
-#   g/G/0/^/$:  vi-like cursor movement keys
-#   H/M/L:      move cursor to first/center/last line of visible area
-#   Ctrl-f/b:   move cursor one screen down/up
-#   Ctrl-d/u:   move cursor half a screen down/up
+#   g/G/0/^/$/H/M/L: more vi-like cursor movement keys
+#   Ctrl-f/b:   move cursor down/up one screen
+#   Ctrl-d/u:   move cursor down/up half a screen
 #   v/V/Ctrl-v: toggle normal/linewise/blockwise selection
 #   y,Return:   copy selected text to primary buffer and quit selection mode
-#   Escape:     cancel whole keyboard selection mode
+#   Escape:     cancel keyboard selection mode
 
 
 use strict;
@@ -164,6 +164,7 @@ sub activate {
 	my ($self) = @_;
 
 	$self->{active} = 1;
+
 	$self->{select} = "";
 	$self->{overlay_len} = 0;
 

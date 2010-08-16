@@ -24,13 +24,12 @@ After installing, put the folling lines in your .Xdefaults:
 Use Meta-Escape to activate selection mode, then use the following keys:
 
     h/j/k/l:    move cursor left/down/up/right (also with arrow keys)
-    g/G/0/^/$:  vi-like cursor movement keys
-    H/M/L:      move cursor to first/center/last line of visible area
-    ctrl-f/b:   move cursor one screen down/up
-    ctrl-d/u:   move cursor half a screen down/up
+    g/G/0/^/$/H/M/L: more vi-like cursor movement keys
+    Ctrl-f/b:   move cursor down/up one screen
+    Ctrl-d/u:   move cursor down/up half a screen
     v/V/Ctrl-v: toggle normal/linewise/blockwise selection
     y,Return:   copy selected text to primary buffer and quit selection mode
-    Escape:     cancel whole keyboard selection mode
+    Escape:     cancel keyboard selection mode
 
 
 url-select
