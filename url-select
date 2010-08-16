@@ -2,7 +2,7 @@
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
 # Based on: http://www.jukie.net/~bart/blog/urxvt-url-yank
-# Version:  1.2
+# Version:  1.3
 # License:  GPLv2
 
 # Use keyboard shortcuts to select URLs.
@@ -230,8 +230,7 @@ sub status_area {
 
 	my $row = $self->{row} < 0 ?
 			$self->{row} - $self->top_row : abs($self->top_row) + $self->{row};
-	my $text = sprintf("%d:%d/%d  ", $row + 1, $self->{n} + 1,
-			$#{ $self->{found} } + 1);
+	my $text = sprintf("%d,%d  ", $row + 1, $self->{n} + 1);
 
 	if ($self->top_row == 0) {
 		$text .= "All";
