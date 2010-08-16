@@ -215,19 +215,32 @@ sub deactivate {
 sub status_area {
 	my ($self) = @_;
 
-	my $lines = $self->top_row < 0 ?
-			abs($self->top_row) + $self->nrow : $self->nrow;
 	my $row = $self->{cr} < 0 ?
 			$self->{cr} - $self->top_row : abs($self->top_row) + $self->{cr};
-	my $text = sprintf("%d,%d", $row + 1, $self->{cc} + 1);
+	my $text = sprintf("%d,%d  ", $row + 1, $self->{cc} + 1);
 
 	if ($self->{select}) {
 		my ($br, $bc, $er, $ec) = calc_span($self);
-		if ($br == $er) {
-			$text .= sprintf("  %d", $ec - $bc);
+		if ($self->{select} eq 'b') {
+			$text .= sprintf("%dx%d  ", $er - $br + 1, $ec - $bc);
 		} else {
-			$text .= sprintf("  %d", $er - $br + 1);
+			if ($br == $er) {
+				$text .= sprintf("%d  ", $ec - $bc);
+			} else {
+				$text .= sprintf("%d  ", $er - $br + 1);
+			}
 		}
+	}
+
+	if ($self->top_row == 0) {
+		$text .= "All";
+	} elsif ($self->view_start() == $self->top_row) {
+		$text .= "Top";
+	} elsif ($self->view_start() == 0) {
+		$text .= "Bot";
+	} else {
+		$text .= sprintf("%2d%",
+				($self->top_row - $self->view_start) * 100 / $self->top_row);
 	}
 
 	my $text_len = length($text);
