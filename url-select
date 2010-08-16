@@ -100,10 +100,10 @@ sub key_press {
 		deactivate($self);
 	} elsif ($keysym == 0xff0d) {
 		# return
-		$self->exec_async($self->{browser}, ${$self->{found}[$self->{i}]}[4]);
+		$self->exec_async($self->{browser}, ${$self->{found}[$self->{n}]}[4]);
 		deactivate($self);
 	} elsif ($char eq 'y') {
-		$self->selection(${$self->{found}[$self->{i}]}[4]);
+		$self->selection(${$self->{found}[$self->{n}]}[4]);
 		$self->selection_grab($event->{time});
 		deactivate($self);
 	} elsif ($char eq 'k') {
@@ -157,11 +157,10 @@ sub select_next {
 	my ($self, $dir) = @_;
 	my $row = $self->{row};
 
-	if (($dir < 0 && $self->{i} > 0) ||
-			($dir > 0 && $self->{i} < $#{ $self->{found} })) {
+	if (($dir < 0 && $self->{n} > 0) ||
+			($dir > 0 && $self->{n} < $#{ $self->{found} })) {
 		# another url on current line
-		$self->{num} += $dir;
-		$self->{i} += $dir;
+		$self->{n} += $dir;
 		hilight($self);
 		return;
 	}
@@ -184,8 +183,7 @@ sub select_next {
 			} while ($text =~ /$url_matcher/g);
 
 			$self->{row} = $row;
-			$self->{num} += $dir;
-			$self->{i} = $dir < 0 ? $#{$self->{found}} : 0;
+			$self->{n} = $dir < 0 ? $#{$self->{found}} : 0;
 			hilight($self);
 			return;
 		}
@@ -208,9 +206,7 @@ sub hilight {
 			$self->view_start($top < 0 ? $top : 0);
 		}
 
-		my $sign = $self->{num} < 0 ? "-" : $self->{num} > 0 ? "+" : " ";
-		status_area($self, sprintf("%s%03d", $sign, abs($self->{num})));
-
+		status_area($self);
 		$self->want_refresh();
 	}
 
@@ -222,7 +218,7 @@ sub refresh {
 	my ($self) = @_;
 
 	if ($self->{found}) {
-		$self->scr_xor_span(@{$self->{found}[$self->{i}]}[0 .. 3], urxvt::RS_RVid);
+		$self->scr_xor_span(@{$self->{found}[$self->{n}]}[0 .. 3], urxvt::RS_RVid);
 	}
 
 	()
@@ -230,11 +226,31 @@ sub refresh {
 
 
 sub status_area {
-	my ($self, $text) = @_;
+	my ($self) = @_;
 
-	if (not $self->{overlay}) {
-		$self->{overlay} = $self->overlay(-1, -1, length($text), 1,
+	my $row = $self->{row} < 0 ?
+			$self->{row} - $self->top_row : abs($self->top_row) + $self->{row};
+	my $text = sprintf("%d:%d/%d  ", $row + 1, $self->{n} + 1,
+			$#{ $self->{found} } + 1);
+
+	if ($self->top_row == 0) {
+		$text .= "All";
+	} elsif ($self->view_start() == $self->top_row) {
+		$text .= "Top";
+	} elsif ($self->view_start() == 0) {
+		$text .= "Bot";
+	} else {
+		$text .= sprintf("%2d%",
+				($self->top_row - $self->view_start) * 100 / $self->top_row);
+	}
+
+	my $text_len = length($text);
+
+	if ($self->{overlay_len} != $text_len) {
+		delete $self->{overlay} if $self->{overlay};
+		$self->{overlay} = $self->overlay(-1, -1, $text_len, 1,
 				urxvt::OVERLAY_RSTYLE, 0);
+		$self->{overlay_len} = $text_len;
 	}
 
 	$self->{overlay}->set(0, 0, $self->special_encode($text));
@@ -255,8 +271,8 @@ sub activate {
 	$self->{active} = 1;
 
 	$self->{row} = $self->view_start() + $self->nrow;
-	$self->{num} = 1;
-	$self->{i} = 0;
+	$self->{n} = 0;
+	$self->{overlay_len} = 0;
 
 	$self->{view_start} = $self->view_start();
 	$self->{pty_ev_events} = $self->pty_ev_events(urxvt::EV_NONE);
