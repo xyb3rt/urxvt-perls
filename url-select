@@ -46,31 +46,29 @@ sub on_start {
 	# read resource settings
 	$self->{browser} = $self->x_resource('urlLauncher') || 'x-www-browser';
 	if ($self->x_resource('underlineURLs') eq 'true') {
-		$self->{underline} = 1;
+		$self->enable(line_update => \&line_update);
 	}
 
 	()
 }
 
 
-sub on_line_update {
+sub line_update {
 	my ($self, $row) = @_;
 
-	if ($self->{underline}) {
-		my $line = $self->line($row);
-		my $text = $line->t;
-		my $rend = $line->r;
+	my $line = $self->line($row);
+	my $text = $line->t;
+	my $rend = $line->r;
 
-		while ($text =~ /$url_matcher/g) {
-			my $url = $1;
-			my ($beg, $end) = ($-[1], $+[1] - 1);
-			--$end if $url =~ /["')]$/;
+	while ($text =~ /$url_matcher/g) {
+		my $url = $1;
+		my ($beg, $end) = ($-[1], $+[1] - 1);
+		--$end if $url =~ /["')]$/;
 
-			for (@{$rend}[$beg .. $end]) {
-				$_ |= urxvt::RS_Uline;
-			}
-			$line->r($rend);
+		for (@{$rend}[$beg .. $end]) {
+			$_ |= urxvt::RS_Uline;
 		}
+		$line->r($rend);
 	}
 
 	()

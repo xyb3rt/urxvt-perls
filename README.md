@@ -46,11 +46,11 @@ After installing, put the folling lines in your .Xdefaults:
 
 Use Meta-u to activate URL selection mode, then use the following keys:
 
-    k:      select next upward URL (also with Meta-u)
-    j:      select next downward URL
-    Return: open selected URL in browser and quit selection mode
-    y:      copy (yank) selected URL and quit selection mode
-    Escape: cancel URL selection mode
+    k:        Select next upward URL (also with Meta-u)
+    j:        Select next downward URL
+    o/Return: Open selected URL in browser, Return: deactivate afterwards
+    y:        Copy (yank) selected URL and deactivate selection mode
+    q/Escape: Deactivate URL selection mode
 
 Options:
 
