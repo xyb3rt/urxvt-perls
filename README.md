@@ -25,7 +25,8 @@ Use Meta-Escape to activate selection mode, then use the following keys:
 
     h/j/k/l:    Move cursor left/down/up/right (also with arrow keys)
     g/G/0/^/$/H/M/L: More vi-like cursor movement keys
-    Ctrl-f/b:   Move cursor down/up one screen
+    Ctrl-f/b:   Scroll down/up one screen
+    Ctrl-d/u:   Scroll down/up half a screen
     v/V/Ctrl-v: Toggle normal/linewise/blockwise selection
     y/Return:   Copy selection to primary buffer, Return: deactivate afterwards
     q/Escape:   Deactivate keyboard selection mode
