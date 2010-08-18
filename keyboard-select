@@ -42,11 +42,26 @@ sub key_press {
 		deactivate($self);
 	} elsif ($char eq 'y' || $keysym == 0xff0d) {
 		if ($self->{select}) {
-			my ($br, $bc, $er, $ec) = calc_span($self);
-			$self->selection_beg($br, $bc);
-			$self->selection_end($er, $ec);
-			$self->selection_make($event->{time}, $self->{select} eq 'b');
-			deactivate($self) unless $char eq 'y';
+			if ($self->{select} eq 'b') {
+				$self->selection($self->{selection});
+				$self->selection_grab($event->{time});
+			} else {
+				my ($br, $bc, $er, $ec) = calc_span($self);
+				$ec = $self->line($er)->l if $self->{select} eq 'l';
+				$self->selection_beg($br, $bc);
+				$self->selection_end($er, $ec);
+				$self->selection_make($event->{time});
+			}
+			if ($char eq 'y') {
+				if ($self->{select} ne 'b') {
+					$self->selection_beg(1, 0);
+					$self->selection_end(1, 0);
+				}
+				$self->{select} = '';
+				$self->want_refresh();
+			} else {
+				deactivate($self);
+			}
 		}
 	} elsif ($char eq 'V') {
 		toggle_select($self, 'l');
@@ -70,34 +85,6 @@ sub key_press {
 	}
 
 	return 1;
-}
-
-
-sub tt_write {
-	return 1;
-}
-
-
-sub refresh {
-	my ($self) = @_;
-
-	if ($self->{select}) {
-		my ($br, $bc, $er, $ec) = calc_span($self);
-
-		if ($self->{select} eq 'b') {
-			# TODO
-		} else {
-			$self->scr_xor_span($br, $bc, $er, $ec, urxvt::RS_RVid);
-		}
-
-		if ($self->{select} ne 'l') {
-			# make the cursor visible again
-			my ($cr, $cc) = $self->screen_cur();
-			$self->scr_xor_span($cr, $cc, $cr, $cc + 1, urxvt::RS_RVid);
-		}
-	}
-
-	()
 }
 
 
@@ -143,8 +130,8 @@ sub move_cursor {
 		}
 
 		$line = $self->line($cr);
-		($cr, $cc) = $line->coord_of($self->{offset} >= $line->l ? $line->l - 1 :
-				$self->{offset});
+		($cr, $cc) = $line->coord_of($self->{offset} < $line->l ? $self->{offset} :
+				$line->l - 1);
 		$self->screen_cur($cr, $cc);
 
 		# scroll the current cursor position into visible area
@@ -158,6 +145,49 @@ sub move_cursor {
 		$self->want_refresh();
 	}
 	
+	()
+}
+
+
+sub tt_write {
+	return 1;
+}
+
+
+sub refresh {
+	my ($self) = @_;
+	my $reverse_cursor = $self->{select} ne 'l';
+	my ($cr, $cc) = $self->screen_cur();
+
+	if ($self->{select}) {
+		my ($br, $bc, $er, $ec) = calc_span($self);
+
+		if ($self->{select} eq 'b') {
+			delete $self->{selection} if $self->{selection};
+			my $r = $br;
+			while ($r <= $er) {
+				my $line = $self->line($r);
+				if ($bc < $line->l) {
+					$self->{selection} .= substr($line->t, $bc, $ec - $bc);
+					my ($br, $bc) = $line->coord_of($bc);
+					my ($er, $ec) = $line->coord_of($ec <= $line->l ? $ec : $line->l);
+					$self->scr_xor_span($br, $bc, $er, $ec, urxvt::RS_RVid);
+				} elsif ($r == $cr) {
+					$reverse_cursor = 0;
+				}
+				$self->{selection} .= "\n" if $line->end < $er;
+				$r = $line->end + 1;
+			}
+		} else {
+			$self->scr_xor_span($br, $bc, $er, $ec, urxvt::RS_RVid);
+		}
+
+		if ($reverse_cursor) {
+			# make the cursor visible again
+			$self->scr_xor_span($cr, $cc, $cr, $cc + 1, urxvt::RS_RVid);
+		}
+	}
+
 	()
 }
 
@@ -199,6 +229,7 @@ sub deactivate {
 	$self->selection_end(1, 0);
 
 	delete $self->{overlay} if $self->{overlay};
+	delete $self->{selection} if $self->{selection};
 
 	$self->disable("key_press", "refresh_begin", "refresh_end", "tt_write");
 	$self->screen_cur($self->{oldcr}, $self->{oldcc});
@@ -278,23 +309,28 @@ sub calc_span {
 	my ($cr, $cc) = $self->screen_cur();
 	my ($br, $bc, $er, $ec);
 	
-	if ($cr < $self->{ar}) {
-		($br, $bc, $er, $ec) = ($cr, $cc, $self->{ar}, $self->{ac});
-	} elsif ($cr > $self->{ar}) {
-		($br, $bc, $er, $ec) = ($self->{ar}, $self->{ac}, $cr, $cc);
+	if ($self->{select} eq 'b') {
+		$br = $self->line($cr)->beg;
+		$bc = $self->line($cr)->offset_of($cr, $cc);
+		$er = $self->line($self->{ar})->beg;
+		$ec = $self->line($self->{ar})->offset_of($self->{ar}, $self->{ac});
+		($br, $er) = ($er, $br) if $br > $er;
+		($bc, $ec) = ($ec, $bc) if $bc > $ec;
 	} else {
-		($br, $er) = ($cr, $cr);
-		($bc, $ec) = $cc < $self->{ac} ? ($cc, $self->{ac}) : ($self->{ac}, $cc);
+		if ($cr < $self->{ar}) {
+			($br, $bc, $er, $ec) = ($cr, $cc, $self->{ar}, $self->{ac});
+		} elsif ($cr > $self->{ar}) {
+			($br, $bc, $er, $ec) = ($self->{ar}, $self->{ac}, $cr, $cc);
+		} else {
+			($br, $er) = ($cr, $cr);
+			($bc, $ec) = $cc < $self->{ac} ? ($cc, $self->{ac}) : ($self->{ac}, $cc);
+		}
 	}
 
 	if ($self->{select} eq 'l') {
 		($br, $er) = ($self->line($br)->beg, $self->line($er)->end);
 		($bc, $ec) = (0, $self->ncol);
 	} else {
-		if ($self->{select} eq 'b') {
-			($br, $er) = ($er, $br) if $br > $er;
-			($bc, $ec) = ($ec, $bc) if $bc > $ec;
-		}
 		++$ec;
 	}
 
