@@ -1,7 +1,7 @@
 #! perl -w
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
-# Version:  1.0
+# Version:  git-20100818
 # License:  GPLv2
 
 # Use keyboard shortcuts to select and copy text.
@@ -11,13 +11,12 @@
 #   URxvt.keysym.M-Escape: perl:keyboard-select:activate
 
 # Use Meta-Escape to activate selection mode, then use the following keys:
-#   h/j/k/l:    move cursor left/down/up/right (also with arrow keys)
-#   g/G/0/^/$/H/M/L: more vi-like cursor movement keys
-#   Ctrl-f/b:   move cursor down/up one screen
-#   Ctrl-d/u:   move cursor down/up half a screen
-#   v/V/Ctrl-v: toggle normal/linewise/blockwise selection
-#   y,Return:   copy selected text to primary buffer and quit selection mode
-#   Escape:     cancel keyboard selection mode
+#   h/j/k/l:    Move cursor left/down/up/right (also with arrow keys)
+#   g/G/0/^/$/H/M/L: More vi-like cursor movement keys
+#   Ctrl-f/b:   Move cursor down/up one screen
+#   v/V/Ctrl-v: Toggle normal/linewise/blockwise selection
+#   y/Return:   Copy selection to primary buffer, Return: deactivate afterwards
+#   q/Escape:   Deactivate keyboard selection mode
 
 
 use strict;
@@ -39,8 +38,7 @@ sub key_press {
 	my ($self, $event, $keysym) = @_;
 	my $char = chr($keysym);
 
-	if ($keysym == 0xff1b) {
-		# escape
+	if ($keysym == 0xff1b || lc($char) eq 'q') {
 		deactivate($self);
 	} elsif ($char eq 'y' || $keysym == 0xff0d) {
 		if ($self->{select}) {
@@ -48,7 +46,7 @@ sub key_press {
 			$self->selection_beg($br, $bc);
 			$self->selection_end($er, $ec);
 			$self->selection_make($event->{time}, $self->{select} eq 'b');
-			deactivate($self);
+			deactivate($self) unless $char eq 'y';
 		}
 	} elsif ($char eq 'V') {
 		toggle_select($self, 'l');
@@ -66,9 +64,8 @@ sub key_press {
 		move_cursor($self, 'h');
 	} elsif ($char eq 'l' || $keysym == 0xff53) {
 		move_cursor($self, 'l');
-	} elsif ('fbdu' =~ m/\Q$char\E/ && $event->{state} & urxvt::ControlMask) {
-		move_cursor($self, $char);
-	} elsif ('gG0^$HML' =~ m/\Q$char\E/) {
+	} elsif ('gG0^$HML' =~ m/\Q$char\E/ ||
+			('fb' =~ m/\Q$char\E/ && $event->{state} & urxvt::ControlMask)) {
 		move_cursor($self, $char);
 	}
 
@@ -88,15 +85,15 @@ sub refresh {
 		my ($br, $bc, $er, $ec) = calc_span($self);
 
 		if ($self->{select} eq 'b') {
-			$self->scr_xor_rect($br, $bc, $er, $ec, urxvt::RS_RVid);
+			# TODO
 		} else {
 			$self->scr_xor_span($br, $bc, $er, $ec, urxvt::RS_RVid);
 		}
 
 		if ($self->{select} ne 'l') {
 			# make the cursor visible again
-			$self->scr_xor_span($self->{cr}, $self->{cc},
-					$self->{cr}, $self->{cc} + 1, urxvt::RS_RVid);
+			my ($cr, $cc) = $self->screen_cur();
+			$self->scr_xor_span($cr, $cc, $cr, $cc + 1, urxvt::RS_RVid);
 		}
 	}
 
@@ -106,50 +103,55 @@ sub refresh {
 
 sub move_cursor {
 	my ($self, $key) = @_;
+	my ($cr, $cc) = $self->screen_cur();
+	my $line = $self->line($cr);
 
 	if ($self->{active}) {
-		if ($key eq 'k' && $self->{cr} > $self->top_row) {
-			--$self->{cr};
-		} elsif ($key eq 'j' && $self->{cr} < $self->nrow - 1) {
-			++$self->{cr};
-		} elsif ($key eq 'h' && $self->{cc} > 0) {
-			--$self->{cc};
-		} elsif ($key eq 'l' && $self->{cc} < $self->ncol - 1) {
-			++$self->{cc};
-		} elsif ($key eq 'f' || $key eq 'd') {
-			$self->{cr} += $key eq 'd' ? ($self->nrow - 1) / 2 : $self->nrow - 1;
-			$self->{cr} = $self->nrow - 1 if $self->{cr} > $self->nrow;
-		} elsif ($key eq 'b' || $key eq 'u') {
-			$self->{cr} -= $key eq 'u' ? ($self->nrow - 1) / 2 : $self->nrow - 1;
-			$self->{cr} = $self->top_row if $self->{cr} < $self->top_row;
+		if ($key eq 'k' && $line->beg > $self->top_row) {
+			$cr = $line->beg - 1;
+		} elsif ($key eq 'j' && $line->end < $self->nrow - 1) {
+			$cr = $line->end + 1;
+		} elsif ($key eq 'h' && $self->{offset} > 0) {
+			$self->{offset} = $line->l - 1 if $self->{offset} >= $line->l;
+			--$self->{offset};
+		} elsif ($key eq 'l' && $self->{offset} < $line->l - 1) {
+			++$self->{offset};
+		} elsif ($key eq 'f') {
+			$cr += $self->nrow - 1;
+			$cr = $self->nrow - 1 if $cr >= $self->nrow;
+		} elsif ($key eq 'b') {
+			$cr -= $self->nrow - 1;
+			$cr = $self->top_row if $cr < $self->top_row;
 		} elsif ($key eq 'g') {
-			($self->{cr}, $self->{cc}) = ($self->top_row, 0);
+			($cr, $self->{offset}) = ($self->top_row, 0);
 		} elsif ($key eq 'G') {
-			($self->{cr}, $self->{cc}) = ($self->nrow - 1, 0);
+			($cr, $self->{offset}) = ($self->nrow - 1, 0);
 		} elsif ($key eq '0') {
-			$self->{cc} = 0;
+			$self->{offset} = 0;
 		} elsif ($key eq '^') {
-			my $ltxt = $self->special_decode($self->line($self->{cr})->t);
+			my $ltxt = $self->special_decode($line->t);
 			while ($ltxt =~ s/^( *)\t/$1 . " " x (8 - length($1) % 8)/e) {}
-			$self->{cc} = $ltxt =~ m/^ +/ ? $+[0] : 0;
+			$self->{offset} = $ltxt =~ m/^ +/ ? $+[0] : 0;
 		} elsif ($key eq '$') {
-			my $ltxt = $self->line($self->{cr})->t;
-			$self->{cc} = ($ltxt =~ m/$/ ? $-[0] : $self->ncol) - 1;
+			$self->{offset} = $line->l - 1;
 		} elsif ($key eq 'H') {
-			$self->{cr} = $self->view_start();
+			$cr = $self->view_start();
 		} elsif ($key eq 'M') {
-			$self->{cr} = $self->view_start() + $self->nrow / 2;
+			$cr = $self->view_start() + $self->nrow / 2;
 		} elsif ($key eq 'L') {
-			$self->{cr} = $self->view_start() + $self->nrow - 1;
+			$cr = $self->view_start() + $self->nrow - 1;
 		}
 
-		$self->screen_cur($self->{cr}, $self->{cc});
+		$line = $self->line($cr);
+		($cr, $cc) = $line->coord_of($self->{offset} >= $line->l ? $line->l - 1 :
+				$self->{offset});
+		$self->screen_cur($cr, $cc);
 
 		# scroll the current cursor position into visible area
-		if ($self->{cr} < $self->view_start()) {
-			$self->view_start($self->{cr});
-		} elsif ($self->{cr} >= $self->view_start() + $self->nrow) {
-			$self->view_start($self->{cr} - $self->nrow + 1);
+		if ($cr < $self->view_start()) {
+			$self->view_start($cr);
+		} elsif ($cr >= $self->view_start() + $self->nrow) {
+			$self->view_start($cr - $self->nrow + 1);
 		}
 
 		status_area($self);
@@ -164,19 +166,17 @@ sub activate {
 	my ($self) = @_;
 
 	$self->{active} = 1;
-
 	$self->{select} = "";
-	$self->{overlay_len} = 0;
 
-	($self->{cr}, $self->{cc}) = $self->screen_cur();
-	$self->{oldcr} = $self->{cr};
-	$self->{oldcc} = $self->{cc};
+	($self->{oldcr}, $self->{oldcc}) = $self->screen_cur();
+	$self->{old_view_start} = $self->view_start();
+	$self->{old_pty_ev_events} = $self->pty_ev_events(urxvt::EV_NONE);
+
+	my $line = $self->line($self->{oldcr});
+	$self->{offset} = $line->offset_of($self->{oldcr}, $self->{oldcc});
 
 	$self->selection_beg(1, 0);
 	$self->selection_end(1, 0);
-
-	$self->{view_start} = $self->view_start();
-	$self->{pty_ev_events} = $self->pty_ev_events(urxvt::EV_NONE);
 
 	$self->enable(
 		key_press     => \&key_press,
@@ -185,6 +185,7 @@ sub activate {
 		tt_write      => \&tt_write,
 	);
 
+	$self->{overlay_len} = 0;
 	status_area($self);
 
 	()
@@ -194,16 +195,15 @@ sub activate {
 sub deactivate {
 	my ($self) = @_;
 
-	$self->screen_cur($self->{oldcr}, $self->{oldcc});
-
 	$self->selection_beg(1, 0);
 	$self->selection_end(1, 0);
 
 	delete $self->{overlay} if $self->{overlay};
 
 	$self->disable("key_press", "refresh_begin", "refresh_end", "tt_write");
-	$self->view_start($self->{view_start});
-	$self->pty_ev_events($self->{pty_ev_events});
+	$self->screen_cur($self->{oldcr}, $self->{oldcc});
+	$self->view_start($self->{old_view_start});
+	$self->pty_ev_events($self->{old_pty_ev_events});
 
 	$self->want_refresh();
 
@@ -215,45 +215,37 @@ sub deactivate {
 
 sub status_area {
 	my ($self) = @_;
-
-	my $row = $self->{cr} < 0 ?
-			$self->{cr} - $self->top_row : abs($self->top_row) + $self->{cr};
-	my $text = sprintf("%d,%d  ", $row + 1, $self->{cc} + 1);
+	my ($stat, $stat_len);
 
 	if ($self->{select}) {
-		my ($br, $bc, $er, $ec) = calc_span($self);
-		if ($self->{select} eq 'b') {
-			$text .= sprintf("%dx%d  ", $er - $br + 1, $ec - $bc);
-		} else {
-			if ($br == $er) {
-				$text .= sprintf("%d  ", $ec - $bc);
-			} else {
-				$text .= sprintf("%d  ", $er - $br + 1);
-			}
+		$stat = "V";
+		if ($self->{select} ne 'n') {
+			$stat .= uc($self->{select});
 		}
+		$stat .= " -- ";
 	}
-
+		
 	if ($self->top_row == 0) {
-		$text .= "All";
+		$stat .= "All";
 	} elsif ($self->view_start() == $self->top_row) {
-		$text .= "Top";
+		$stat .= "Top";
 	} elsif ($self->view_start() == 0) {
-		$text .= "Bot";
+		$stat .= "Bot";
 	} else {
-		$text .= sprintf("%2d%",
+		$stat .= sprintf("%2d%",
 				($self->top_row - $self->view_start) * 100 / $self->top_row);
 	}
+	
+	$stat_len = length($stat);
 
-	my $text_len = length($text);
-
-	if ($self->{overlay_len} != $text_len) {
+	if (!$self->{overlay} || $self->{overlay_len} != $stat_len) {
 		delete $self->{overlay} if $self->{overlay};
-		$self->{overlay} = $self->overlay(-1, -1, $text_len, 1,
+		$self->{overlay} = $self->overlay(-1, -1, $stat_len, 1,
 				urxvt::OVERLAY_RSTYLE, 0);
-		$self->{overlay_len} = $text_len;
+		$self->{overlay_len} = $stat_len;
 	}
 
-	$self->{overlay}->set(0, 0, $self->special_encode($text));
+	$self->{overlay}->set(0, 0, $self->special_encode($stat));
 	$self->{overlay}->show();
 
 	()
@@ -268,8 +260,7 @@ sub toggle_select {
 			$self->{select} = '';
 		} else {
 			if (not $self->{select}) {
-				$self->{ar} = $self->{cr};
-				$self->{ac} = $self->{cc};
+				($self->{ar}, $self->{ac}) = $self->screen_cur();
 			}
 			$self->{select} = $mode;
 		}
@@ -284,28 +275,21 @@ sub toggle_select {
 
 sub calc_span {
 	my ($self) = @_;
+	my ($cr, $cc) = $self->screen_cur();
 	my ($br, $bc, $er, $ec);
 	
-	if ($self->{cr} < $self->{ar}) {
-		$br = $self->{cr};
-		$bc = $self->{cc};
-		$er = $self->{ar};
-		$ec = $self->{ac};
-	} elsif ($self->{cr} > $self->{ar}) {
-		$br = $self->{ar};
-		$bc = $self->{ac};
-		$er = $self->{cr};
-		$ec = $self->{cc};
+	if ($cr < $self->{ar}) {
+		($br, $bc, $er, $ec) = ($cr, $cc, $self->{ar}, $self->{ac});
+	} elsif ($cr > $self->{ar}) {
+		($br, $bc, $er, $ec) = ($self->{ar}, $self->{ac}, $cr, $cc);
 	} else {
-		$br = $self->{cr};
-		$bc = $self->{cc} < $self->{ac} ? $self->{cc} : $self->{ac};
-		$er = $self->{cr};
-		$ec = $self->{cc} > $self->{ac} ? $self->{cc} : $self->{ac};
+		($br, $er) = ($cr, $cr);
+		($bc, $ec) = $cc < $self->{ac} ? ($cc, $self->{ac}) : ($self->{ac}, $cc);
 	}
 
 	if ($self->{select} eq 'l') {
-		$bc = 0;
-		$ec = $self->ncol;
+		($br, $er) = ($self->line($br)->beg, $self->line($er)->end);
+		($bc, $ec) = (0, $self->ncol);
 	} else {
 		if ($self->{select} eq 'b') {
 			($br, $er) = ($er, $br) if $br > $er;
