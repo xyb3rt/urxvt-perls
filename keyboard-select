@@ -13,7 +13,8 @@
 # Use Meta-Escape to activate selection mode, then use the following keys:
 #   h/j/k/l:    Move cursor left/down/up/right (also with arrow keys)
 #   g/G/0/^/$/H/M/L: More vi-like cursor movement keys
-#   Ctrl-f/b:   Move cursor down/up one screen
+#   Ctrl-f/b:   Scroll down/up one screen
+#   Ctrl-d/u:   Scroll down/up half a screen
 #   v/V/Ctrl-v: Toggle normal/linewise/blockwise selection
 #   y/Return:   Copy selection to primary buffer, Return: deactivate afterwards
 #   q/Escape:   Deactivate keyboard selection mode
@@ -80,7 +81,7 @@ sub key_press {
 	} elsif ($char eq 'l' || $keysym == 0xff53) {
 		move_cursor($self, 'l');
 	} elsif ('gG0^$HML' =~ m/\Q$char\E/ ||
-			('fb' =~ m/\Q$char\E/ && $event->{state} & urxvt::ControlMask)) {
+			('fbdu' =~ m/\Q$char\E/ && $event->{state} & urxvt::ControlMask)) {
 		move_cursor($self, $char);
 	}
 
@@ -93,57 +94,66 @@ sub move_cursor {
 	my ($cr, $cc) = $self->screen_cur();
 	my $line = $self->line($cr);
 
-	if ($self->{active}) {
-		if ($key eq 'k' && $line->beg > $self->top_row) {
-			$cr = $line->beg - 1;
-		} elsif ($key eq 'j' && $line->end < $self->nrow - 1) {
-			$cr = $line->end + 1;
-		} elsif ($key eq 'h' && $self->{offset} > 0) {
-			$self->{offset} = $line->l - 1 if $self->{offset} >= $line->l;
-			--$self->{offset};
-		} elsif ($key eq 'l' && $self->{offset} < $line->l - 1) {
-			++$self->{offset};
-		} elsif ($key eq 'f') {
-			$cr += $self->nrow - 1;
-			$cr = $self->nrow - 1 if $cr >= $self->nrow;
-		} elsif ($key eq 'b') {
-			$cr -= $self->nrow - 1;
-			$cr = $self->top_row if $cr < $self->top_row;
-		} elsif ($key eq 'g') {
-			($cr, $self->{offset}) = ($self->top_row, 0);
-		} elsif ($key eq 'G') {
-			($cr, $self->{offset}) = ($self->nrow - 1, 0);
-		} elsif ($key eq '0') {
-			$self->{offset} = 0;
-		} elsif ($key eq '^') {
-			my $ltxt = $self->special_decode($line->t);
-			while ($ltxt =~ s/^( *)\t/$1 . " " x (8 - length($1) % 8)/e) {}
-			$self->{offset} = $ltxt =~ m/^ +/ ? $+[0] : 0;
-		} elsif ($key eq '$') {
-			$self->{offset} = $line->l - 1;
-		} elsif ($key eq 'H') {
-			$cr = $self->view_start();
-		} elsif ($key eq 'M') {
-			$cr = $self->view_start() + $self->nrow / 2;
-		} elsif ($key eq 'L') {
-			$cr = $self->view_start() + $self->nrow - 1;
-		}
-
-		$line = $self->line($cr);
-		($cr, $cc) = $line->coord_of($self->{offset} < $line->l ? $self->{offset} :
-				$line->l - 1);
-		$self->screen_cur($cr, $cc);
-
-		# scroll the current cursor position into visible area
-		if ($cr < $self->view_start()) {
-			$self->view_start($cr);
-		} elsif ($cr >= $self->view_start() + $self->nrow) {
-			$self->view_start($cr - $self->nrow + 1);
-		}
-
-		status_area($self);
-		$self->want_refresh();
+	if ($key eq 'k' && $line->beg > $self->top_row) {
+		$cr = $line->beg - 1;
+	} elsif ($key eq 'j' && $line->end < $self->nrow - 1) {
+		$cr = $line->end + 1;
+	} elsif ($key eq 'h' && $self->{offset} > 0) {
+		$self->{offset} = $line->l - 1 if $self->{offset} >= $line->l;
+		--$self->{offset};
+		$self->{dollar} = 0;
+	} elsif ($key eq 'l' && $self->{offset} < $line->l - 1) {
+		++$self->{offset};
+	} elsif ($key eq 'f' || $key eq 'd') {
+		my $vs = $self->view_start() +
+				($key eq 'd' ? $self->nrow / 2 : $self->nrow - 1);
+		$vs = 0 if $vs > 0;
+		$cr += $vs - $self->view_start($vs);
+	} elsif ($key eq 'b' || $key eq 'u') {
+		my $vs = $self->view_start() -
+				($key eq 'u' ? $self->nrow / 2 : $self->nrow - 1);
+		$vs = $self->top_row if $vs < $self->top_row;
+		$cr += $vs - $self->view_start($vs);
+	} elsif ($key eq 'g') {
+		($cr, $self->{offset}) = ($self->top_row, 0);
+		$self->{dollar} = 0;
+	} elsif ($key eq 'G') {
+		($cr, $self->{offset}) = ($self->nrow - 1, 0);
+		$self->{dollar} = 0;
+	} elsif ($key eq '0') {
+		$self->{offset} = 0;
+		$self->{dollar} = 0;
+	} elsif ($key eq '^') {
+		my $ltxt = $self->special_decode($line->t);
+		while ($ltxt =~ s/^( *)\t/$1 . " " x (8 - length($1) % 8)/e) {}
+		$self->{offset} = $ltxt =~ m/^ +/ ? $+[0] : 0;
+		$self->{dollar} = 0;
+	} elsif ($key eq '$') {
+		$self->{offset} = $line->l - 1;
+		$self->{dollar} = 1;
+	} elsif ($key eq 'H') {
+		$cr = $self->view_start();
+	} elsif ($key eq 'M') {
+		$cr = $self->view_start() + $self->nrow / 2;
+	} elsif ($key eq 'L') {
+		$cr = $self->view_start() + $self->nrow - 1;
 	}
+
+	$line = $self->line($cr);
+	$self->{offset} = $line->l - 1 if $self->{dollar};
+	($cr, $cc) = $line->coord_of($self->{offset} < $line->l ? $self->{offset} :
+			$line->l - 1);
+	$self->screen_cur($cr, $cc);
+
+	# scroll the current cursor position into visible area
+	if ($cr < $self->view_start()) {
+		$self->view_start($cr);
+	} elsif ($cr >= $self->view_start() + $self->nrow) {
+		$self->view_start($cr - $self->nrow + 1);
+	}
+
+	status_area($self);
+	$self->want_refresh();
 	
 	()
 }
@@ -168,6 +178,7 @@ sub refresh {
 			while ($r <= $er) {
 				my $line = $self->line($r);
 				if ($bc < $line->l) {
+					$ec = $line->l if $self->{dollar};
 					$self->{selection} .= substr($line->t, $bc, $ec - $bc);
 					my ($br, $bc) = $line->coord_of($bc);
 					my ($er, $ec) = $line->coord_of($ec <= $line->l ? $ec : $line->l);
@@ -196,7 +207,9 @@ sub activate {
 	my ($self) = @_;
 
 	$self->{active} = 1;
+
 	$self->{select} = "";
+	$self->{dollar} = 0;
 
 	($self->{oldcr}, $self->{oldcc}) = $self->screen_cur();
 	$self->{old_view_start} = $self->view_start();
@@ -263,7 +276,7 @@ sub status_area {
 	} elsif ($self->view_start() == 0) {
 		$stat .= "Bot";
 	} else {
-		$stat .= sprintf("%2d%",
+		$stat .= sprintf("%2d%%",
 				($self->top_row - $self->view_start) * 100 / $self->top_row);
 	}
 	
@@ -286,19 +299,17 @@ sub status_area {
 sub toggle_select {
 	my ($self, $mode) = @_;
 
-	if ($self->{active}) {
-		if ($self->{select} eq $mode) {
-			$self->{select} = '';
-		} else {
-			if (not $self->{select}) {
-				($self->{ar}, $self->{ac}) = $self->screen_cur();
-			}
-			$self->{select} = $mode;
+	if ($self->{select} eq $mode) {
+		$self->{select} = '';
+	} else {
+		if (not $self->{select}) {
+			($self->{ar}, $self->{ac}) = $self->screen_cur();
 		}
-
-		status_area($self);
-		$self->want_refresh();
+		$self->{select} = $mode;
 	}
+
+	status_area($self);
+	$self->want_refresh();
 
 	()
 }
