@@ -16,7 +16,7 @@ keyboard-select
 ---------------
 Use keyboard shortcuts to select and copy text.
 
-After installing, put the folling lines in your .Xdefaults:
+After installing, put the following lines in your .Xdefaults:
 
     URxvt.perl-ext-common: ...,keyboard-select
     URxvt.keysym.M-Escape: perl:keyboard-select:activate
@@ -39,7 +39,7 @@ Use keyboard shortcuts to select URLs.
 This should be used as a replacement for the default matcher extension, it also
 makes URLs clickable with the middle mouse button.
 
-After installing, put the folling lines in your .Xdefaults:
+After installing, put the following lines in your .Xdefaults:
 
     URxvt.perl-ext-common: ...,url-select
     URxvt.keysym.M-u: perl:url-select:select_next
@@ -65,7 +65,7 @@ clipboard contents (optionally escaping all special characters).
 
 Requires xsel to be installed!
 
-After installing, put the folling lines in your .Xdefaults:
+After installing, put the following lines in your .Xdefaults:
 
     URxvt.perl-ext-common: ...,clipboard
     URxvt.keysym.M-c:   perl:clipboard:copy
