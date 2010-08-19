@@ -1,7 +1,7 @@
 #! perl -w
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
-# Version:  1.1
+# Version:  git-20100819
 # License:  GPLv2
 
 # Use keyboard shortcuts to select and copy text.
@@ -36,8 +36,15 @@ sub on_user_command {
 
 
 sub key_press {
-	my ($self, $event, $keysym) = @_;
-	my $char = chr($keysym);
+	my ($self, $event, $keysym, $char) = @_;
+
+	if ($self->{move_to} && $char !~ m/[\x00-\x1f\x80-\xaf]/ &&
+			length($char) > 0) {
+		$self->{move_char} = $self->locale_decode($char);
+		move_to($self, $self->{move_to});
+		$self->{move_to} = 0;
+		return 1;
+	}
 
 	if ($keysym == 0xff1b || lc($char) eq 'q') {
 		deactivate($self);
@@ -83,6 +90,10 @@ sub key_press {
 	} elsif ('gG0^$HML' =~ m/\Q$char\E/ ||
 			('fbdu' =~ m/\Q$char\E/ && $event->{state} & urxvt::ControlMask)) {
 		move_cursor($self, $char);
+	} elsif (lc($char) eq 'f') {
+		$self->{move_to} = $char eq 'F' ? -1 : 1;
+	} elsif ($char eq ';' || $char eq ',') {
+		move_to($self, $char eq ',' ? -1 : 1) if $self->{move_char};
 	}
 
 	return 1;
@@ -159,6 +170,38 @@ sub move_cursor {
 }
 
 
+sub move_to {
+	my ($self, $dir) = @_;
+	my ($cr, $cc) = $self->screen_cur();
+	my $line = $self->line($cr);
+	my $found = 0;
+
+	print "move_to: " . $self->{move_char} . " (" . ord($self->locale_decode($self->{move_char})) . ")\n";
+
+	if ($dir > 0 && $self->{offset} < $line->l - 1) {
+		my $text = substr($line->t, $self->{offset} + 1);
+		if ($text =~ m/\Q$self->{move_char}\E/) {
+			$self->{offset} += $-[0] + 1;
+			$found = 1;
+		}
+	} elsif ($dir < 0 && $self->{offset} > 0) {
+		my $text = substr($line->t, 0, $self->{offset});
+		if ($text =~ m/.*(\Q$self->{move_char}\E)/) {
+			$self->{offset} += $-[1] - length($text);
+			$found = 1;
+		}
+	}
+
+	if ($found) {
+		$self->{dollar} = 0;
+		$self->screen_cur($line->coord_of($self->{offset}));
+		$self->want_refresh();
+	}
+
+	()
+}
+
+
 sub tt_write {
 	return 1;
 }
@@ -210,6 +253,8 @@ sub activate {
 
 	$self->{select} = "";
 	$self->{dollar} = 0;
+	$self->{move_to} = 0;
+	$self->{move_char} = '';
 
 	($self->{oldcr}, $self->{oldcc}) = $self->screen_cur();
 	$self->{old_view_start} = $self->view_start();
