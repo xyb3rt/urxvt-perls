@@ -36,19 +36,20 @@ sub on_user_command {
 
 
 sub key_press {
-	my ($self, $event, $keysym, $char) = @_;
+	my ($self, $event, $keysym) = @_;
+	my $key = chr($keysym);
 
-	if ($self->{move_to} && $char !~ m/[\x00-\x1f\x80-\xaf]/ &&
-			length($char) > 0) {
-		$self->{move_char} = $self->locale_decode($char);
+	if ($self->{move_to} && $key !~ m/[\x00-\x1f\x80-\xaf]/ &&
+			length($key) > 0) {
+		$self->{move_char} = $key;
 		move_to($self, $self->{move_to});
 		$self->{move_to} = 0;
 		return 1;
 	}
 
-	if ($keysym == 0xff1b || lc($char) eq 'q') {
+	if ($keysym == 0xff1b || lc($key) eq 'q') {
 		deactivate($self);
-	} elsif ($char eq 'y' || $keysym == 0xff0d) {
+	} elsif ($key eq 'y' || $keysym == 0xff0d) {
 		if ($self->{select}) {
 			if ($self->{select} eq 'b') {
 				$self->selection($self->{selection});
@@ -60,7 +61,7 @@ sub key_press {
 				$self->selection_end($er, $ec);
 				$self->selection_make($event->{time});
 			}
-			if ($char eq 'y') {
+			if ($key eq 'y') {
 				if ($self->{select} ne 'b') {
 					$self->selection_beg(1, 0);
 					$self->selection_end(1, 0);
@@ -71,29 +72,29 @@ sub key_press {
 				deactivate($self);
 			}
 		}
-	} elsif ($char eq 'V') {
+	} elsif ($key eq 'V') {
 		toggle_select($self, 'l');
-	} elsif ($char eq 'v') {
+	} elsif ($key eq 'v') {
 		if ($event->{state} & urxvt::ControlMask) {
 			toggle_select($self, 'b');
 		} else {
 			toggle_select($self, 'n');
 		}
-	} elsif ($char eq 'k' || $keysym == 0xff52) {
+	} elsif ($key eq 'k' || $keysym == 0xff52) {
 		move_cursor($self, 'k');
-	} elsif ($char eq 'j' || $keysym == 0xff54) {
+	} elsif ($key eq 'j' || $keysym == 0xff54) {
 		move_cursor($self, 'j');
-	} elsif ($char eq 'h' || $keysym == 0xff51) {
+	} elsif ($key eq 'h' || $keysym == 0xff51) {
 		move_cursor($self, 'h');
-	} elsif ($char eq 'l' || $keysym == 0xff53) {
+	} elsif ($key eq 'l' || $keysym == 0xff53) {
 		move_cursor($self, 'l');
-	} elsif ('gG0^$HML' =~ m/\Q$char\E/ ||
-			('fbdu' =~ m/\Q$char\E/ && $event->{state} & urxvt::ControlMask)) {
-		move_cursor($self, $char);
-	} elsif (lc($char) eq 'f') {
-		$self->{move_to} = $char eq 'F' ? -1 : 1;
-	} elsif ($char eq ';' || $char eq ',') {
-		move_to($self, $char eq ',' ? -1 : 1) if $self->{move_char};
+	} elsif ('gG0^$HML' =~ m/\Q$key\E/ ||
+			('fbdu' =~ m/\Q$key\E/ && $event->{state} & urxvt::ControlMask)) {
+		move_cursor($self, $key);
+	} elsif (lc($key) eq 'f') {
+		$self->{move_to} = $key eq 'F' ? -1 : 1;
+	} elsif ($key eq ';' || $key eq ',') {
+		move_to($self, $key eq ',' ? -1 : 1) if $self->{move_char};
 	}
 
 	return 1;
