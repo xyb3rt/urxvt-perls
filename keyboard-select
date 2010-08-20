@@ -179,20 +179,22 @@ sub move_cursor {
 
 
 sub move_to {
-	my ($self, $dir) = @_;
+	my ($self, $dir, $pattern) = @_;
 	my ($cr, $cc) = $self->screen_cur();
 	my $line = $self->line($cr);
 	my $found = 0;
 
+	$pattern = "\Q$self->{move_char}\E" unless $pattern;
+
 	if ($dir > 0 && $self->{offset} < $line->l - 1) {
 		my $text = substr($line->t, $self->{offset} + 1);
-		if ($text =~ m/\Q$self->{move_char}\E/) {
+		if ($text =~ m/$pattern/) {
 			$self->{offset} += $-[0] + 1;
 			$found = 1;
 		}
 	} elsif ($dir < 0 && $self->{offset} > 0) {
 		my $text = substr($line->t, 0, $self->{offset});
-		if ($text =~ m/.*(\Q$self->{move_char}\E)/) {
+		if ($text =~ m/.*($pattern)/) {
 			$self->{offset} += $-[1] - length($text);
 			$found = 1;
 		}
@@ -313,7 +315,7 @@ sub status_area {
 	my ($stat, $stat_len);
 
 	if ($self->{select}) {
-		$stat = "-V" . ($self->{select} ne 'n' ? uc($self->{select}) : "") . "-  ";
+		$stat = "-V" . ($self->{select} ne 'n' ? uc($self->{select}) : "") . "- ";
 	}
 
 	if ($self->top_row == 0) {
@@ -327,8 +329,8 @@ sub status_area {
 				($self->top_row - $self->view_start) * 100 / $self->top_row);
 	}
 	
-	$stat = "$extra  $stat" if $extra;
-	$stat_len = length($stat) + 2;
+	$stat = "$extra $stat" if $extra;
+	$stat_len = length($stat);
 
 	if (!$self->{overlay} || $self->{overlay_len} != $stat_len) {
 		delete $self->{overlay} if $self->{overlay};
@@ -337,7 +339,7 @@ sub status_area {
 		$self->{overlay_len} = $stat_len;
 	}
 
-	$self->{overlay}->set(1, 0, $self->special_encode($stat));
+	$self->{overlay}->set(0, 0, $self->special_encode($stat));
 	$self->{overlay}->show();
 
 	()

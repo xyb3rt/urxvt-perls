@@ -226,7 +226,7 @@ sub status_area {
 
 	my $row = $self->{row} < 0 ?
 			$self->{row} - $self->top_row : abs($self->top_row) + $self->{row};
-	my $text = sprintf("%d,%d  ", $row + 1, $self->{n} + 1);
+	my $text = sprintf("%d,%d ", $row + 1, $self->{n} + 1);
 
 	if ($self->top_row == 0) {
 		$text .= "All";
@@ -239,7 +239,7 @@ sub status_area {
 				($self->top_row - $self->view_start) * 100 / $self->top_row);
 	}
 
-	my $text_len = length($text) + 2;
+	my $text_len = length($text);
 
 	if ($self->{overlay_len} != $text_len) {
 		delete $self->{overlay} if $self->{overlay};
@@ -248,7 +248,7 @@ sub status_area {
 		$self->{overlay_len} = $text_len;
 	}
 
-	$self->{overlay}->set(1, 0, $self->special_encode($text));
+	$self->{overlay}->set(0, 0, $self->special_encode($text));
 	$self->{overlay}->show();
 
 	()
