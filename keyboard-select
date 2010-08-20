@@ -12,7 +12,7 @@
 
 # Use Meta-Escape to activate selection mode, then use the following keys:
 #   h/j/k/l:    Move cursor left/down/up/right (also with arrow keys)
-#   g/G/0/^/$/H/M/L: More vi-like cursor movement keys
+#   g/G/0/^/$/H/M/L/f/F/;/,: More vi-like cursor movement keys
 #   Ctrl-f/b:   Scroll down/up one screen
 #   Ctrl-d/u:   Scroll down/up half a screen
 #   v/V/Ctrl-v: Toggle normal/linewise/blockwise selection
@@ -36,14 +36,19 @@ sub on_user_command {
 
 
 sub key_press {
-	my ($self, $event, $keysym) = @_;
+	my ($self, $event, $keysym, $char) = @_;
 	my $key = chr($keysym);
 
-	if ($self->{move_to} && $key !~ m/[\x00-\x1f\x80-\xaf]/ &&
-			length($key) > 0) {
-		$self->{move_char} = $key;
-		move_to($self, $self->{move_to});
-		$self->{move_to} = 0;
+	if ($self->{move_to}) {
+		if ($keysym == 0xff1b) {
+			$self->{move_to} = 0;
+			status_area($self);
+		} elsif (length($char) > 0) {
+			$self->{move_char} = $key;
+			$self->{move_to} = 0;
+			move_to($self, $self->{move_dir});
+			status_area($self);
+		}
 		return 1;
 	}
 
@@ -92,9 +97,11 @@ sub key_press {
 			('fbdu' =~ m/\Q$key\E/ && $event->{state} & urxvt::ControlMask)) {
 		move_cursor($self, $key);
 	} elsif (lc($key) eq 'f') {
-		$self->{move_to} = $key eq 'F' ? -1 : 1;
-	} elsif ($key eq ';' || $key eq ',') {
-		move_to($self, $key eq ',' ? -1 : 1) if $self->{move_char};
+		$self->{move_to} = 1;
+		$self->{move_dir} = $key eq 'F' ? -1 : 1;
+		status_area($self, $key);
+	} elsif (($key eq ';' || $key eq ',') && $self->{move_char}) {
+		move_to($self, $self->{move_dir} * ($key eq ',' ? -1 : 1));
 	}
 
 	return 1;
@@ -176,8 +183,6 @@ sub move_to {
 	my ($cr, $cc) = $self->screen_cur();
 	my $line = $self->line($cr);
 	my $found = 0;
-
-	print "move_to: " . $self->{move_char} . " (" . ord($self->locale_decode($self->{move_char})) . ")\n";
 
 	if ($dir > 0 && $self->{offset} < $line->l - 1) {
 		my $text = substr($line->t, $self->{offset} + 1);
@@ -304,17 +309,13 @@ sub deactivate {
 
 
 sub status_area {
-	my ($self) = @_;
+	my ($self, $extra) = @_;
 	my ($stat, $stat_len);
 
 	if ($self->{select}) {
-		$stat = "V";
-		if ($self->{select} ne 'n') {
-			$stat .= uc($self->{select});
-		}
-		$stat .= " -- ";
+		$stat = "-V" . ($self->{select} ne 'n' ? uc($self->{select}) : "") . "-  ";
 	}
-		
+
 	if ($self->top_row == 0) {
 		$stat .= "All";
 	} elsif ($self->view_start() == $self->top_row) {
@@ -326,7 +327,8 @@ sub status_area {
 				($self->top_row - $self->view_start) * 100 / $self->top_row);
 	}
 	
-	$stat_len = length($stat);
+	$stat = "$extra  $stat" if $extra;
+	$stat_len = length($stat) + 2;
 
 	if (!$self->{overlay} || $self->{overlay_len} != $stat_len) {
 		delete $self->{overlay} if $self->{overlay};
@@ -335,7 +337,7 @@ sub status_area {
 		$self->{overlay_len} = $stat_len;
 	}
 
-	$self->{overlay}->set(0, 0, $self->special_encode($stat));
+	$self->{overlay}->set(1, 0, $self->special_encode($stat));
 	$self->{overlay}->show();
 
 	()

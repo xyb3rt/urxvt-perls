@@ -2,7 +2,7 @@
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
 # Based on: http://www.jukie.net/~bart/blog/urxvt-url-yank
-# Version:  1.3
+# Version:  git-20100820
 # License:  GPLv2
 
 # Use keyboard shortcuts to select URLs.
@@ -239,7 +239,7 @@ sub status_area {
 				($self->top_row - $self->view_start) * 100 / $self->top_row);
 	}
 
-	my $text_len = length($text);
+	my $text_len = length($text) + 2;
 
 	if ($self->{overlay_len} != $text_len) {
 		delete $self->{overlay} if $self->{overlay};
@@ -248,7 +248,7 @@ sub status_area {
 		$self->{overlay_len} = $text_len;
 	}
 
-	$self->{overlay}->set(0, 0, $self->special_encode($text));
+	$self->{overlay}->set(1, 0, $self->special_encode($text));
 	$self->{overlay}->show();
 
 	()
