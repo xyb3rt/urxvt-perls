@@ -1,7 +1,7 @@
 #! perl -w
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
-# Version:  git-20100819
+# Version:  git-20100821
 # License:  GPLv2
 
 # Use keyboard shortcuts to select and copy text.
@@ -46,7 +46,7 @@ sub key_press {
 		} elsif (length($char) > 0) {
 			$self->{move_char} = $key;
 			$self->{move_to} = 0;
-			move_to($self, $self->{move_dir});
+			move_to($self, $self->{move_dir}, 1);
 			status_area($self);
 		}
 		return 1;
@@ -100,8 +100,16 @@ sub key_press {
 		$self->{move_to} = 1;
 		$self->{move_dir} = $key eq 'F' ? -1 : 1;
 		status_area($self, $key);
-	} elsif (($key eq ';' || $key eq ',') && $self->{move_char}) {
-		move_to($self, $self->{move_dir} * ($key eq ',' ? -1 : 1));
+	} elsif ($key eq ';' && $self->{move_char}) {
+		move_to($self, $self->{move_dir}, 1);
+	} elsif ($key eq ',' && $self->{move_char}) {
+		move_to($self, $self->{move_dir} * -1, 1);
+	} elsif ($key eq 'w') {
+		move_to($self, 1, 0, '(\w[^\w\s])|(\W\w)');
+	} elsif ($key eq 'W') {
+		move_to($self, 1, 0, '\s+.');
+	#} elsif ($key eq 'b') {
+	#	move_to($self, -1, 0, '(\w[^\w\s])|(\W\w)');
 	}
 
 	return 1;
@@ -179,24 +187,38 @@ sub move_cursor {
 
 
 sub move_to {
-	my ($self, $dir, $pattern) = @_;
+	my ($self, $dir, $offs, $pattern) = @_;
 	my ($cr, $cc) = $self->screen_cur();
 	my $line = $self->line($cr);
-	my $found = 0;
+	my ($wrap, $found) = (0, 0);
 
-	$pattern = "\Q$self->{move_char}\E" unless $pattern;
+	if ($pattern) {
+		$wrap = 1;
+	} else {
+		$pattern = "\Q$self->{move_char}\E";
+	}
 
-	if ($dir > 0 && $self->{offset} < $line->l - 1) {
-		my $text = substr($line->t, $self->{offset} + 1);
+	if ($dir > 0) {
+		my $text = substr($line->t, $self->{offset} + $offs);
 		if ($text =~ m/$pattern/) {
-			$self->{offset} += $-[0] + 1;
+			$self->{offset} += $+[0] - 1 + $offs;
+			$found = 1;
+		} elsif ($wrap && $line->end + 1 < $self->nrow) {
+			$cr = $line->end + 1;
+			$line = $self->line($cr);
+			$self->{offset} = 0;
 			$found = 1;
 		}
-	} elsif ($dir < 0 && $self->{offset} > 0) {
-		my $text = substr($line->t, 0, $self->{offset});
-		if ($text =~ m/.*($pattern)/) {
-			$self->{offset} += $-[1] - length($text);
+	} elsif ($dir < 0) {
+		NEXT: my $text = substr($line->t, 0, $self->{offset} + 1 - $offs);
+		if ($text =~ m/.*$pattern/) {
+			$self->{offset} += $+[0] - $offs - length($text);
 			$found = 1;
+		} elsif ($wrap && $line->beg > $self->top_row) {
+			$cr = $line->beg - 1;
+			$line = $self->line($cr);
+			$self->{offset} = $line->l - 1;
+			goto NEXT;
 		}
 	}
 
