@@ -24,7 +24,7 @@ After installing, put the following lines in your .Xdefaults:
 Use Meta-Escape to activate selection mode, then use the following keys:
 
     h/j/k/l:    Move cursor left/down/up/right (also with arrow keys)
-    g/G/0/^/$/H/M/L/f/F/;/,: More vi-like cursor movement keys
+    g/G/0/^/$/H/M/L/f/F/;/,/w/W/b/B: More vi-like cursor movement keys
     Ctrl-f/b:   Scroll down/up one screen
     Ctrl-d/u:   Scroll down/up half a screen
     v/V/Ctrl-v: Toggle normal/linewise/blockwise selection

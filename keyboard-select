@@ -1,7 +1,7 @@
 #! perl -w
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
-# Version:  git-20100821
+# Version:  git-20100822
 # License:  GPLv2
 
 # Use keyboard shortcuts to select and copy text.
@@ -12,7 +12,7 @@
 
 # Use Meta-Escape to activate selection mode, then use the following keys:
 #   h/j/k/l:    Move cursor left/down/up/right (also with arrow keys)
-#   g/G/0/^/$/H/M/L/f/F/;/,: More vi-like cursor movement keys
+#   g/G/0/^/$/H/M/L/f/F/;/,/w/W/b/B: More vi-like cursor movement keys
 #   Ctrl-f/b:   Scroll down/up one screen
 #   Ctrl-d/u:   Scroll down/up half a screen
 #   v/V/Ctrl-v: Toggle normal/linewise/blockwise selection
@@ -21,6 +21,18 @@
 
 
 use strict;
+
+sub on_start{
+	my ($self) = @_;
+
+	$self->{patterns}{'w'} = qr/\w[^\w\s]|\W\w|\s\S/;
+	$self->{patterns}{'W'} = qr/\s\S/;
+	$self->{patterns}{'b'} = qr/.*(?:\w[^\w\s]|\W\w|\s\S)/;
+	$self->{patterns}{'B'} = qr/.*\s\S/;
+
+	()
+}
+
 
 sub on_user_command {
 	my ($self, $cmd) = @_;
@@ -44,9 +56,10 @@ sub key_press {
 			$self->{move_to} = 0;
 			status_area($self);
 		} elsif (length($char) > 0) {
-			$self->{move_char} = $key;
 			$self->{move_to} = 0;
-			move_to($self, $self->{move_dir}, 1);
+			$self->{patterns}{'f-1'} = qr/^.*\Q$key\E/;
+			$self->{patterns}{'f+1'} = qr/^.+?\Q$key\E/;
+			move_to($self, ';');
 			status_area($self);
 		}
 		return 1;
@@ -100,16 +113,8 @@ sub key_press {
 		$self->{move_to} = 1;
 		$self->{move_dir} = $key eq 'F' ? -1 : 1;
 		status_area($self, $key);
-	} elsif ($key eq ';' && $self->{move_char}) {
-		move_to($self, $self->{move_dir}, 1);
-	} elsif ($key eq ',' && $self->{move_char}) {
-		move_to($self, $self->{move_dir} * -1, 1);
-	} elsif ($key eq 'w') {
-		move_to($self, 1, 0, '(\w[^\w\s])|(\W\w)');
-	} elsif ($key eq 'W') {
-		move_to($self, 1, 0, '\s+.');
-	#} elsif ($key eq 'b') {
-	#	move_to($self, -1, 0, '(\w[^\w\s])|(\W\w)');
+	} elsif (';,wWbB' =~ m/\Q$key\E/) {
+		move_to($self, $key);
 	}
 
 	return 1;
@@ -167,9 +172,9 @@ sub move_cursor {
 	}
 
 	$line = $self->line($cr);
-	$self->{offset} = $line->l - 1 if $self->{dollar};
-	($cr, $cc) = $line->coord_of($self->{offset} < $line->l ? $self->{offset} :
-			$line->l - 1);
+	$self->{offset} = $line->l - 1 if $self->{dollar} or
+			$self->{offset} >= $line->l;
+	($cr, $cc) = $line->coord_of($self->{offset});
 	$self->screen_cur($cr, $cc);
 
 	# scroll the current cursor position into visible area
@@ -187,21 +192,30 @@ sub move_cursor {
 
 
 sub move_to {
-	my ($self, $dir, $offs, $pattern) = @_;
+	my ($self, $key) = @_;
 	my ($cr, $cc) = $self->screen_cur();
 	my $line = $self->line($cr);
+	my ($dir, $pattern);
 	my ($wrap, $found) = (0, 0);
 
-	if ($pattern) {
-		$wrap = 1;
+	if ($key eq ';' || $key eq ',') {
+		$dir = $self->{move_dir} * ($key eq ',' ? -1 : 1);
+		$pattern = $self->{patterns}{sprintf('f%+d', $dir)};
+		return if not $pattern;
 	} else {
-		$pattern = "\Q$self->{move_char}\E";
+		if (lc($key) eq 'w') {
+			$dir = 1;
+		} else {
+			$dir = -1;
+		}
+		$pattern = $self->{patterns}{$key};
+		$wrap = 1;
 	}
 
 	if ($dir > 0) {
-		my $text = substr($line->t, $self->{offset} + $offs);
+		my $text = substr($line->t, $self->{offset});
 		if ($text =~ m/$pattern/) {
-			$self->{offset} += $+[0] - 1 + $offs;
+			$self->{offset} += $+[0] - 1;
 			$found = 1;
 		} elsif ($wrap && $line->end + 1 < $self->nrow) {
 			$cr = $line->end + 1;
@@ -210,15 +224,22 @@ sub move_to {
 			$found = 1;
 		}
 	} elsif ($dir < 0) {
-		NEXT: my $text = substr($line->t, 0, $self->{offset} + 1 - $offs);
-		if ($text =~ m/.*$pattern/) {
-			$self->{offset} += $+[0] - $offs - length($text);
+		NEXT: my $text = substr($line->t, 0, $self->{offset});
+		print "\$text: $text\n";
+		if ($text =~ m/$pattern/) {
+			print "matched: $&\n";
+			$self->{offset} += $+[0] - length($text) - 1;
 			$found = 1;
-		} elsif ($wrap && $line->beg > $self->top_row) {
-			$cr = $line->beg - 1;
-			$line = $self->line($cr);
-			$self->{offset} = $line->l - 1;
-			goto NEXT;
+		} elsif ($wrap) {
+			if ($self->{offset} > 0) {
+				$self->{offset} = 0;
+				$found = 1;
+			} elsif ($line->beg > $self->top_row) {
+				$cr = $line->beg - 1;
+				$line = $self->line($cr);
+				$self->{offset} = $line->l;
+				goto NEXT;
+			}
 		}
 	}
 
@@ -284,7 +305,6 @@ sub activate {
 	$self->{select} = "";
 	$self->{dollar} = 0;
 	$self->{move_to} = 0;
-	$self->{move_char} = '';
 
 	($self->{oldcr}, $self->{oldcc}) = $self->screen_cur();
 	$self->{old_view_start} = $self->view_start();
@@ -302,6 +322,12 @@ sub activate {
 		refresh_end   => \&refresh,
 		tt_write      => \&tt_write,
 	);
+
+	if ($self->{offset} >= $line->l) {
+		$self->{offset} = $line->l - 1;
+		$self->screen_cur($line->coord_of($self->{offset}));
+		$self->want_refresh();
+	}
 
 	$self->{overlay_len} = 0;
 	status_area($self);
