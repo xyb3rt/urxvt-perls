@@ -2,7 +2,7 @@
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
 # Based on: http://www.jukie.net/~bart/blog/urxvt-url-yank
-# Version:  git-20100820
+# Version:  git-20100829
 # License:  GPLv2
 
 # Use keyboard shortcuts to select URLs.
@@ -29,19 +29,12 @@ use strict;
 
 my $url_matcher = qr{(
 	(?:https?://|ftp://|news://|mailto:|file://|www\.)
-	[ab-zA-Z0-9\-\@;\/?:&=%\$_.+!*\x27(),~#]+[ab-zA-Z0-9\-\@;\/?&=%\$_+!*\x27()~]
+	[\w\-\@;\/?:&=%\$_.+!*\x27(),~#]+[\w\-\@;\/?&=%\$_+!*\x27()~]
 )}x;
 
 
 sub on_start {
 	my ($self) = @_;
-
-	eval { require Regexp::Common::URI };
-	if(!$@) {
-		require Regexp::Common;
-		Regexp::Common->import('URI');
-		$url_matcher = $Regexp::Common::RE{URI}{HTTP};
-	}
 
 	# read resource settings
 	$self->{browser} = $self->x_resource('urlLauncher') || 'x-www-browser';
@@ -133,10 +126,8 @@ sub on_button_release {
 
 		while ($text =~ /$url_matcher/g) {
 			my ($url, $beg, $end) = ($1, $-[0], $+[0]);
+			--$end if $url =~ s/["')]$//;
 
-			if ($url =~ s/["')]$//) {
-				--$end;
-			}
 			if ($col >= $beg && $col <= $end) {
 				$self->exec_async($self->{browser}, $url);
 				return 1;
