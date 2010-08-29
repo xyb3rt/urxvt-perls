@@ -1,7 +1,7 @@
 #! perl -w
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
-# Version:  git-20100822
+# Version:  1.2
 # License:  GPLv2
 
 # Use keyboard shortcuts to select and copy text.
@@ -85,6 +85,7 @@ sub key_press {
 					$self->selection_end(1, 0);
 				}
 				$self->{select} = '';
+				status_area($self);
 				$self->want_refresh();
 			} else {
 				deactivate($self);
@@ -225,9 +226,7 @@ sub move_to {
 		}
 	} elsif ($dir < 0) {
 		NEXT: my $text = substr($line->t, 0, $self->{offset});
-		print "\$text: $text\n";
 		if ($text =~ m/$pattern/) {
-			print "matched: $&\n";
 			$self->{offset} += $+[0] - length($text) - 1;
 			$found = 1;
 		} elsif ($wrap) {
