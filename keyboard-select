@@ -158,8 +158,7 @@ sub move_cursor {
 	} elsif ($key eq 'j' && $line->end < $self->nrow - 1) {
 		$cr = $line->end + 1;
 	} elsif ($key eq 'h' && $self->{offset} > 0) {
-		$self->{offset} = $line->l - 1 if $self->{offset} >= $line->l;
-		--$self->{offset};
+		$self->{offset} = $line->offset_of($cr, $cc) - 1;
 		$self->{dollar} = 0;
 	} elsif ($key eq 'l' && $self->{offset} < $line->l - 1) {
 		++$self->{offset};
@@ -188,8 +187,9 @@ sub move_cursor {
 		$self->{offset} = $ltxt =~ m/^ +/ ? $+[0] : 0;
 		$self->{dollar} = 0;
 	} elsif ($key eq '$') {
+		my $co = $line->offset_of($cr, $cc);
+		$self->{dollar} = $co + 1;
 		$self->{offset} = $line->l - 1;
-		$self->{dollar} = 1;
 	} elsif ($key eq 'H') {
 		$cr = $self->view_start();
 	} elsif ($key eq 'M') {
@@ -199,9 +199,9 @@ sub move_cursor {
 	}
 
 	$line = $self->line($cr);
-	$self->{offset} = $line->l - 1 if $self->{dollar} or
-			$self->{offset} >= $line->l;
-	$self->screen_cur($line->coord_of($self->{offset}));
+	$cc = $self->{dollar} || $self->{offset} >= $line->l ? $line->l - 1 :
+			$self->{offset};
+	$self->screen_cur($line->coord_of($cc));
 
 	status_area($self);
 	$self->want_refresh();
@@ -335,11 +335,14 @@ sub refresh {
 
 		if ($self->{select} eq 'b') {
 			delete $self->{selection} if $self->{selection};
+			my $co = $self->line($cr)->offset_of($cr, $cc);
+			my $dollar = $self->{dollar} && $co >= $self->{dollar} - 1;
+
 			my $r = $br;
 			while ($r <= $er) {
 				my $line = $self->line($r);
 				if ($bc < $line->l) {
-					$ec = $line->l if $self->{dollar};
+					$ec = $line->l if $dollar;
 					$self->{selection} .= substr($line->t, $bc, $ec - $bc);
 					my ($br, $bc) = $line->coord_of($bc);
 					my ($er, $ec) = $line->coord_of($ec <= $line->l ? $ec : $line->l);
