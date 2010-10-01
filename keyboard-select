@@ -1,7 +1,7 @@
 #! perl -w
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
-# Version:  1.3
+# Version:  git-20101001
 # License:  GPLv2
 
 # Use keyboard shortcuts to select and copy text.
@@ -81,8 +81,14 @@ sub key_press {
 			} elsif ($self->{pattern}) {
 				delete $self->{pattern};
 			}
-			$self->{search}  = '';
-			status_area($self) unless find_next($self);
+			$self->{search} = '';
+			if (not find_next($self)) {
+				if ($self->{search_mode}) {
+					deactivate($self);
+				} else {
+					status_area($self);
+				}
+			}
 		} elsif (length($char) > 0) {
 			$self->{search} .= $self->locale_decode($char);
 			status_area($self);
