@@ -60,11 +60,19 @@ sub key_press {
 
 	if ($self->{search}) {
 		if ($keysym == 0xff1b) {
-			$self->{search} = '';
-			status_area($self);
+			if ($self->{search_mode}) {
+				deactivate($self);
+			} else {
+				$self->{search} = '';
+				status_area($self);
+			}
 		} elsif ($keysym == 0xff08) {
 			$self->{search} = substr($self->{search}, 0, -1);
-			status_area($self);
+			if (not $self->{search} and $self->{search_mode}) {
+				deactivate($self);
+			} else {
+				status_area($self);
+			}
 		} elsif ($keysym == 0xff0d) {
 			my $txt = substr($self->{search}, 1);
 			if ($txt) {
@@ -391,8 +399,10 @@ sub activate {
 	if ($search) {
 		$self->{search} = '?';
 		$self->{search_dir} = -1;
+		$self->{search_mode} = 1;
 	} else {
 		$self->{search} = '';
+		$self->{search_mode} = 0;
 	}
 
 	($self->{oldcr}, $self->{oldcc}) = $self->screen_cur();
