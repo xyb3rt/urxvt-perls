@@ -1,7 +1,7 @@
 #! perl -w
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
-# Version:  1.4
+# Version:  git-20101129
 # License:  GPLv2
 
 # Use keyboard shortcuts to select and copy text.
@@ -15,7 +15,7 @@
 
 # Use Meta-Escape to activate selection mode, then use the following keys:
 #   h/j/k/l:    Move cursor left/down/up/right (also with arrow keys)
-#   g/G/0/^/$/H/M/L/f/F/;/,/w/W/b/B: More vi-like cursor movement keys
+#   g/G/0/^/$/H/M/L/f/F/;/,/w/W/b/B/e/E: More vi-like cursor movement keys
 #   '/'/?:      Start forward/backward search
 #   n/N:        Repeat last search, N: in reverse direction
 #   Ctrl-f/b:   Scroll down/up one screen
@@ -34,6 +34,8 @@ sub on_start{
 	$self->{patterns}{'W'} = qr/\s\S/;
 	$self->{patterns}{'b'} = qr/.*(?:\w[^\w\s]|\W\w|\s\S)/;
 	$self->{patterns}{'B'} = qr/.*\s\S/;
+	$self->{patterns}{'e'} = qr/[^\w\s](?=\w)|\w(?=\W)|\S(?=\s|$)/;
+	$self->{patterns}{'E'} = qr/\S(?=\s|$)/;
 
 	()
 }
@@ -153,7 +155,7 @@ sub key_press {
 		$self->{move_to} = 1;
 		$self->{move_dir} = $key eq 'F' ? -1 : 1;
 		status_area($self, $key);
-	} elsif (';,wWbB' =~ m/\Q$key\E/) {
+	} elsif (';,wWbBeE' =~ m/\Q$key\E/) {
 		move_to($self, $key);
 	} elsif ($key eq '/' || $key eq '?') {
 		$self->{search} = $key;
@@ -233,6 +235,7 @@ sub move_to {
 	my ($self, $key) = @_;
 	my ($cr, $cc) = $self->screen_cur();
 	my $line = $self->line($cr);
+	my $offset = $self->{offset};
 	my ($dir, $pattern);
 	my ($wrap, $found) = (0, 0);
 
@@ -241,47 +244,53 @@ sub move_to {
 		$pattern = $self->{patterns}{sprintf('f%+d', $dir)};
 		return if not $pattern;
 	} else {
-		if (lc($key) eq 'w') {
-			$dir = 1;
-		} else {
+		if (lc($key) eq 'b') {
 			$dir = -1;
+		} else {
+			$dir = 1;
+			++$offset if lc($key) eq 'e';
 		}
 		$pattern = $self->{patterns}{$key};
 		$wrap = 1;
 	}
 
 	if ($dir > 0) {
-		my $text = substr($line->t, $self->{offset});
+		NEXTDOWN: my $text = substr($line->t, $offset);
 		if ($text =~ m/$pattern/) {
-			$self->{offset} += $+[0] - 1;
+			$offset += $+[0] - 1;
 			$found = 1;
 		} elsif ($wrap && $line->end + 1 < $self->nrow) {
 			$cr = $line->end + 1;
 			$line = $self->line($cr);
-			$self->{offset} = 0;
-			$found = 1;
+			$offset = 0;
+			if (lc($key) eq 'e') {
+				goto NEXTDOWN;
+			} else {
+				$found = 1;
+			}
 		}
 	} elsif ($dir < 0) {
-		NEXT: my $text = substr($line->t, 0, $self->{offset});
+		NEXTUP: my $text = substr($line->t, 0, $offset);
 		if ($text =~ m/$pattern/) {
-			$self->{offset} += $+[0] - length($text) - 1;
+			$offset += $+[0] - length($text) - 1;
 			$found = 1;
 		} elsif ($wrap) {
-			if ($self->{offset} > 0) {
-				$self->{offset} = 0;
+			if ($offset > 0) {
+				$offset = 0;
 				$found = 1;
 			} elsif ($line->beg > $self->top_row) {
 				$cr = $line->beg - 1;
 				$line = $self->line($cr);
-				$self->{offset} = $line->l;
-				goto NEXT;
+				$offset = $line->l;
+				goto NEXTUP;
 			}
 		}
 	}
 
 	if ($found) {
 		$self->{dollar} = 0;
-		$self->screen_cur($line->coord_of($self->{offset}));
+		$self->{offset} = $offset;
+		$self->screen_cur($line->coord_of($offset));
 		$self->want_refresh();
 	}
 
