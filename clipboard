@@ -16,7 +16,6 @@
 # The use of the functions should be self-explanatory!
 
 use strict;
-use utf8;
 
 sub copy {
    my ($self) = @_;
