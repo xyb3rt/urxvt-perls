@@ -20,11 +20,14 @@ use strict;
 sub copy {
 	my ($self) = @_;
 
-	open(CLIPBOARD, "| xsel -ib");
-	my $sel = $self->selection();
-	utf8::encode($sel);
-	print CLIPBOARD $sel;
-	close(CLIPBOARD);
+	if (open(CLIPBOARD, "| xsel -ib")) {
+		my $sel = $self->selection();
+		utf8::encode($sel);
+		print CLIPBOARD $sel;
+		close(CLIPBOARD);
+	} else {
+		print STDERR "Error running xsel: $!\n";
+	}
 
 	()
 }
@@ -33,8 +36,12 @@ sub paste {
 	my ($self) = @_;
 
 	my $str = `xsel -ob`;
-	$str =~ tr/\n/\r/;
-	$self->tt_write($str);
+	if ($? == 0) {
+		$str =~ tr/\n/\r/;
+		$self->tt_write($str);
+	} else {
+		print STDERR "Error running xsel: $!\n";
+	}
 
 	()
 }
@@ -43,9 +50,13 @@ sub paste_escaped {
 	my ($self) = @_;
 
 	my $str = `xsel -ob`;
-	$str =~ tr/\n/\r/;
-	$str =~ s/([!#\$%&\*\(\) ='"\\\|\[\]`~,<>\?])/\\\1/g;
-	$self->tt_write($str);
+	if ($? == 0) {
+		$str =~ tr/\n/\r/;
+		$str =~ s/([!#\$%&\*\(\) ='"\\\|\[\]`~,<>\?])/\\\1/g;
+		$self->tt_write($str);
+	} else {
+		print STDERR "Error running xsel: $!\n";
+	}
 
 	()
 }
