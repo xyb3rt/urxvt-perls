@@ -18,48 +18,48 @@
 use strict;
 
 sub copy {
-   my ($self) = @_;
+	my ($self) = @_;
 
-   open(CLIPBOARD, "| xsel -ib");
-   my $sel = $self->selection();
-   utf8::encode($sel);
-   print CLIPBOARD $sel;
-   close(CLIPBOARD);
+	open(CLIPBOARD, "| xsel -ib");
+	my $sel = $self->selection();
+	utf8::encode($sel);
+	print CLIPBOARD $sel;
+	close(CLIPBOARD);
 
-   ()
+	()
 }
 
 sub paste {
-   my ($self) = @_;
+	my ($self) = @_;
 
-   my $str = `xsel -ob`;
-   $str =~ tr/\n/\r/;
-   $self->tt_write($str);
+	my $str = `xsel -ob`;
+	$str =~ tr/\n/\r/;
+	$self->tt_write($str);
 
-   ()
+	()
 }
 
 sub paste_escaped {
-   my ($self) = @_;
+	my ($self) = @_;
 
-   my $str = `xsel -ob`;
-   $str =~ tr/\n/\r/;
-   $str =~ s/([!#\$%&\*\(\) ='"\\\|\[\]`~,<>\?])/\\\1/g;
-   $self->tt_write($str);
+	my $str = `xsel -ob`;
+	$str =~ tr/\n/\r/;
+	$str =~ s/([!#\$%&\*\(\) ='"\\\|\[\]`~,<>\?])/\\\1/g;
+	$self->tt_write($str);
 
-   ()
+	()
 }
 
 sub on_user_command {
-   my ($self, $cmd) = @_;
+	my ($self, $cmd) = @_;
 
-   if ($cmd eq "clipboard:copy") {
-      $self->copy;
-   } elsif ($cmd eq "clipboard:paste") {
-      $self->paste;
-   } elsif ($cmd eq "clipboard:paste_escaped") {
-      $self->paste_escaped;
-   }
+	if ($cmd eq "clipboard:copy") {
+	   $self->copy;
+	} elsif ($cmd eq "clipboard:paste") {
+	   $self->paste;
+	} elsif ($cmd eq "clipboard:paste_escaped") {
+	   $self->paste_escaped;
+	}
 
-   ()
+	()
 }
