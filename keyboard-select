@@ -1,7 +1,7 @@
 #! perl -w
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
-# Version:  1.5
+# Version:  git-20110414
 # License:  GPLv2
 
 # Use keyboard shortcuts to select and copy text.
@@ -438,7 +438,7 @@ sub activate {
 	);
 
 	if ($self->{offset} >= $line->l) {
-		$self->{offset} = $line->l - 1;
+		$self->{offset} = $line->l > 0 ? $line->l - 1 : 0;
 		$self->screen_cur($line->coord_of($self->{offset}));
 		$self->want_refresh();
 	}
