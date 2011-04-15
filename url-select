@@ -23,6 +23,7 @@
 # Options:
 #   URxvt.urlLauncher:   Browser/command to open selected URL with
 #   URxvt.underlineURLs: If set to true, all URLs get underlined
+#   URvxt.urlButton:     Which mouse button should click URLs
 
 
 use strict;
@@ -32,7 +33,6 @@ my $url_matcher = qr{(
 	[\w\-\@;\/?:&=%\$_.+!*\x27(),~#]+[\w\-\@;\/?&=%\$_+!*\x27()~]
 )}x;
 
-
 sub on_start {
 	my ($self) = @_;
 
@@ -40,6 +40,14 @@ sub on_start {
 	$self->{browser} = $self->x_resource('urlLauncher') || 'x-www-browser';
 	if ($self->x_resource('underlineURLs') eq 'true') {
 		$self->enable(line_update => \&line_update);
+	}
+
+	# Allow configuring which button should launch URLs or default to 2.
+	if($self->x_resource('urlButton') =~ /^\d+$/) {
+		$self->{button} = $self->x_resource('urlButton');
+	}
+	else {
+		$self->{button} = 2;
 	}
 
 	()
@@ -119,7 +127,7 @@ sub on_button_release {
 	my $mask = $self->ModLevel3Mask | $self->ModMetaMask |
 			urxvt::ShiftMask | urxvt::ControlMask;
 
-	if ($event->{button} == 2 && ($event->{state} & $mask) == 0) {
+	if ($event->{button} == $self->{button} && ($event->{state} & $mask) == 0) {
 		my $col = $event->{col};
 		my $line = $self->line($event->{row});
 		my $text = $line->t;
@@ -290,3 +298,4 @@ sub deactivate {
 
 	()
 }
+
