@@ -63,6 +63,7 @@ Options:
 
     URxvt.urlLauncher:   browser/command to open selected URL with
     URxvt.underlineURLs: if set to true, all URLs get underlined
+    URvxt.urlButton:     mouse button to click-open URLs (default: 2)
 
 
 clipboard
