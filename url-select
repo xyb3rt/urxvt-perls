@@ -2,7 +2,7 @@
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
 # Based on: http://www.jukie.net/~bart/blog/urxvt-url-yank
-# Version:  1.4
+# Version:  git-20110420
 # License:  GPLv2
 
 # Use keyboard shortcuts to select URLs.
@@ -23,7 +23,7 @@
 # Options:
 #   URxvt.urlLauncher:   Browser/command to open selected URL with
 #   URxvt.underlineURLs: If set to true, all URLs get underlined
-#   URvxt.urlButton:     Which mouse button should click URLs
+#   URvxt.urlButton:     Mouse button to click-open URLs (default: 2)
 
 
 use strict;
@@ -41,12 +41,9 @@ sub on_start {
 	if ($self->x_resource('underlineURLs') eq 'true') {
 		$self->enable(line_update => \&line_update);
 	}
-
-	# Allow configuring which button should launch URLs or default to 2.
 	if($self->x_resource('urlButton') =~ /^\d+$/) {
 		$self->{button} = $self->x_resource('urlButton');
-	}
-	else {
+	} else {
 		$self->{button} = 2;
 	}
 
