@@ -38,7 +38,7 @@ sub on_start {
 
 	# read resource settings
 	if ($self->x_resource('urlLauncher')) {
-		@{$self->{browser}} = split " ", $self->x_resource('urlLauncher');
+		@{$self->{browser}} = split /\s+/, $self->x_resource('urlLauncher');
 	} else {
 		@{$self->{browser}} = ('x-www-browser');
 	}
