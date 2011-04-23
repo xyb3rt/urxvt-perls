@@ -2,7 +2,7 @@
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
 # Based on: http://www.jukie.net/~bart/blog/urxvt-url-yank
-# Version:  git-20110420
+# Version:  git-20110423
 # License:  GPLv2
 
 # Use keyboard shortcuts to select URLs.
@@ -37,7 +37,11 @@ sub on_start {
 	my ($self) = @_;
 
 	# read resource settings
-	$self->{browser} = $self->x_resource('urlLauncher') || 'x-www-browser';
+	if ($self->x_resource('urlLauncher')) {
+		@{$self->{browser}} = split " ", $self->x_resource('urlLauncher');
+	} else {
+		@{$self->{browser}} = ('x-www-browser');
+	}
 	if ($self->x_resource('underlineURLs') eq 'true') {
 		$self->enable(line_update => \&line_update);
 	}
@@ -94,7 +98,7 @@ sub key_press {
 	if ($keysym == 0xff1b || lc($char) eq 'q') {
 		deactivate($self);
 	} elsif ($keysym == 0xff0d || $char eq 'o') {
-		$self->exec_async($self->{browser}, ${$self->{found}[$self->{n}]}[4]);
+		$self->exec_async(@{$self->{browser}}, ${$self->{found}[$self->{n}]}[4]);
 		deactivate($self) unless $char eq 'o';
 	} elsif ($char eq 'y') {
 		$self->selection(${$self->{found}[$self->{n}]}[4]);
@@ -134,7 +138,7 @@ sub on_button_release {
 			--$end if $url =~ s/["')]$//;
 
 			if ($col >= $beg && $col <= $end) {
-				$self->exec_async($self->{browser}, $url);
+				$self->exec_async(@{$self->{browser}}, $url);
 				return 1;
 			}
 		}
