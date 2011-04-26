@@ -45,7 +45,7 @@ sub on_start {
 	if ($self->x_resource('underlineURLs') eq 'true') {
 		$self->enable(line_update => \&line_update);
 	}
-	if($self->x_resource('urlButton') =~ /^\d+$/) {
+	if($self->x_resource('urlButton') =~ /\d+/) {
 		$self->{button} = $self->x_resource('urlButton');
 	} else {
 		$self->{button} = 2;
