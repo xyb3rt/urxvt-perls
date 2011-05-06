@@ -37,8 +37,7 @@ sub paste {
 
 	my $str = `xsel -ob`;
 	if ($? == 0) {
-		$str =~ tr/\n/\r/;
-		$self->tt_write($str);
+		$self->tt_paste($self->locale_encode($str));
 	} else {
 		print STDERR "Error running xsel: $!\n";
 	}
@@ -51,9 +50,8 @@ sub paste_escaped {
 
 	my $str = `xsel -ob`;
 	if ($? == 0) {
-		$str =~ tr/\n/\r/;
 		$str =~ s/([!#\$%&\*\(\) ='"\\\|\[\]`~,<>\?])/\\\1/g;
-		$self->tt_write($str);
+		$self->tt_paste($self->locale_encode($str));
 	} else {
 		print STDERR "Error running xsel: $!\n";
 	}
