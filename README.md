@@ -4,19 +4,19 @@ Installation
 ------------
 Simply place the scripts you want to install in the /usr/lib/urxvt/perl/ folder
 for system-wide availability. You can also put them in a folder of your
-choice, but then you have to add this line to your .Xdefaults:
+choice, but then you have to add this line to your .Xdefaults/.Xresources:
 
     URxvt.perl-lib: /your/folder/
 
 See the following sections for information on how to enable the scripts or set
-script-specific options and keyboard mappings in your .Xdefaults.
+script-specific options and keyboard mappings in your .Xdefaults/.Xresources.
 
 
 keyboard-select
 ---------------
 Use keyboard shortcuts to select and copy text.
 
-After installing, put the following lines in your .Xdefaults:
+After installing, put the following lines in your .Xdefaults/.Xresources:
 
     URxvt.perl-ext-common: ...,keyboard-select
     URxvt.keysym.M-Escape: perl:keyboard-select:activate
@@ -46,7 +46,7 @@ Use keyboard shortcuts to select URLs.
 This should be used as a replacement for the default matcher extension, it also
 makes URLs clickable with the middle mouse button.
 
-After installing, put the following lines in your .Xdefaults:
+After installing, put the following lines in your .Xdefaults/.Xresources:
 
     URxvt.perl-ext-common: ...,url-select
     URxvt.keysym.M-u: perl:url-select:select_next
@@ -71,7 +71,7 @@ clipboard
 Use keyboard shortcuts to copy the selection to the clipboard and to paste the
 clipboard contents (optionally escaping all special characters).
 
-After installing, put the following lines in your .Xdefaults:
+After installing, put the following lines in your .Xdefaults/.Xresources:
 
     URxvt.perl-ext-common: ...,clipboard
     URxvt.keysym.M-c:   perl:clipboard:copy
@@ -84,12 +84,12 @@ The default ones are:
     URxvt.copyCommand:  xsel -ib
     URxvt.pasteCommand: xsel -ob
 
-If you prefer xclip, then put these lines in your .Xdefaults:
+If you prefer xclip, then put these lines in your .Xdefaults/.Xresources:
 
     URxvt.copyCommand:  xclip -i -selection clipboard
     URxvt.pasteCommand: xclip -o -selection clipboard
 
-On Mac OS X, put these lines in your .Xdefaults:
+On Mac OS X, put these lines in your .Xdefaults/.Xresources:
 
     URxvt.copyCommand:  pbcopy
     URxvt.pasteCommand: pbpaste

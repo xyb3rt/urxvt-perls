@@ -7,7 +7,7 @@
 # the clipboard contents (optionally escaping all special characters).
 # Requires xsel to be installed!
 
-# Usage: put the following lines in your .Xdefaults:
+# Usage: put the following lines in your .Xdefaults/.Xresources:
 #   URxvt.perl-ext-common: ...,clipboard
 #   URxvt.keysym.M-c:   perl:clipboard:copy
 #   URxvt.keysym.M-v:   perl:clipboard:paste
@@ -17,10 +17,10 @@
 # The default ones are:
 #   URxvt.copyCommand:  xsel -ib
 #   URxvt.pasteCommand: xsel -ob
-# If you prefer xclip, then put these lines in your .Xdefaults:
+# If you prefer xclip, then put these lines in your .Xdefaults/.Xresources:
 #   URxvt.copyCommand:  xclip -i -selection clipboard
 #   URxvt.pasteCommand: xclip -o -selection clipboard
-# On Mac OS X, put these lines in your .Xdefaults:
+# On Mac OS X, put these lines in your .Xdefaults/.Xresources:
 #   URxvt.copyCommand:  pbcopy
 #   URxvt.pasteCommand: pbpaste
 

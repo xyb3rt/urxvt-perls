@@ -6,7 +6,7 @@
 
 # Use keyboard shortcuts to select and copy text.
 
-# Usage: put the following lines in your .Xdefaults:
+# Usage: put the following lines in your .Xdefaults/.Xresources:
 #   URxvt.perl-ext-common: ...,keyboard-select
 #   URxvt.keysym.M-Escape: perl:keyboard-select:activate
 # The following line overwrites the default Meta-s binding and allows to

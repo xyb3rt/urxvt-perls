@@ -9,7 +9,7 @@
 # This should be used as a replacement for the default matcher extension,
 # it also makes URLs clickable with the middle mouse button.
 
-# Usage: put the following lines in your .Xdefaults:
+# Usage: put the following lines in your .Xdefaults/.Xresources:
 #   URxvt.perl-ext-common: ...,url-select
 #   URxvt.keysym.M-u: perl:url-select:select_next
 
