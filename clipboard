@@ -13,20 +13,40 @@
 #   URxvt.keysym.M-v:   perl:clipboard:paste
 #   URxvt.keysym.M-C-v: perl:clipboard:paste_escaped
 
+# You can also overwrite the system commands to use for copying/pasting.
+# The default ones are:
+#   URxvt.copyCommand:  xsel -ib
+#   URxvt.pasteCommand: xsel -ob
+# If you prefer xclip, then put these lines in your .Xdefaults:
+#   URxvt.copyCommand:  xclip -i -selection clipboard
+#   URxvt.pasteCommand: xclip -o -selection clipboard
+# On Mac OS X, put these lines in your .Xdefaults:
+#   URxvt.copyCommand:  pbcopy
+#   URxvt.pasteCommand: pbpaste
+
 # The use of the functions should be self-explanatory!
 
 use strict;
 
+sub on_start {
+	my ($self) = @_;
+
+	$self->{copy_cmd} = $self->x_resource('copyCommand') || 'xsel -ib';
+	$self->{paste_cmd} = $self->x_resource('pasteCommand') || 'xsel -ob';
+
+	()
+}
+
 sub copy {
 	my ($self) = @_;
 
-	if (open(CLIPBOARD, "| xsel -ib")) {
+	if (open(CLIPBOARD, "| $self->{copy_cmd}")) {
 		my $sel = $self->selection();
 		utf8::encode($sel);
 		print CLIPBOARD $sel;
 		close(CLIPBOARD);
 	} else {
-		print STDERR "Error running xsel: $!\n";
+		print STDERR "error running '$self->{copy_cmd}': $!\n";
 	}
 
 	()
@@ -35,11 +55,11 @@ sub copy {
 sub paste {
 	my ($self) = @_;
 
-	my $str = `xsel -ob`;
+	my $str = `$self->{paste_cmd}`;
 	if ($? == 0) {
 		$self->tt_paste($self->locale_encode($str));
 	} else {
-		print STDERR "Error running xsel: $!\n";
+		print STDERR "error running '$self->{paste_cmd}': $!\n";
 	}
 
 	()
@@ -48,12 +68,12 @@ sub paste {
 sub paste_escaped {
 	my ($self) = @_;
 
-	my $str = `xsel -ob`;
+	my $str = `$self->{paste_cmd}`;
 	if ($? == 0) {
 		$str =~ s/([!#\$%&\*\(\) ='"\\\|\[\]`~,<>\?])/\\\1/g;
 		$self->tt_paste($self->locale_encode($str));
 	} else {
-		print STDERR "Error running xsel: $!\n";
+		print STDERR "error running '$self->{paste_cmd}': $!\n";
 	}
 
 	()

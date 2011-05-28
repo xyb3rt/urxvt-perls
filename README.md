@@ -71,13 +71,27 @@ clipboard
 Use keyboard shortcuts to copy the selection to the clipboard and to paste the
 clipboard contents (optionally escaping all special characters).
 
-Requires xsel to be installed!
-
 After installing, put the following lines in your .Xdefaults:
 
     URxvt.perl-ext-common: ...,clipboard
     URxvt.keysym.M-c:   perl:clipboard:copy
     URxvt.keysym.M-v:   perl:clipboard:paste
     URxvt.keysym.M-C-v: perl:clipboard:paste_escaped
+
+You can also overwrite the system commands to use for copying/pasting.
+The default ones are:
+
+    URxvt.copyCommand:  xsel -ib
+    URxvt.pasteCommand: xsel -ob
+
+If you prefer xclip, then put these lines in your .Xdefaults:
+
+    URxvt.copyCommand:  xclip -i -selection clipboard
+    URxvt.pasteCommand: xclip -o -selection clipboard
+
+On Mac OS X, put these lines in your .Xdefaults:
+
+    URxvt.copyCommand:  pbcopy
+    URxvt.pasteCommand: pbpaste
 
 The use of the functions should be self-explanatory!
