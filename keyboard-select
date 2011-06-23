@@ -11,7 +11,10 @@
 #   URxvt.keysym.M-Escape: perl:keyboard-select:activate
 # The following line overwrites the default Meta-s binding and allows to
 # activate keyboard-select directly in backward search mode:
-#   URxvt.keysym:M-s: perl:keyboard-select:search
+#   URxvt.keysym.M-s: perl:keyboard-select:search
+# How to use singleline mode to repeatedly select previous line on each
+# keypress:
+#   URxvt.keysym.M-C-l: perl:keyboard-select:prev_singleline
 
 # Use Meta-Escape to activate selection mode, then use the following keys:
 #   h/j/k/l:    Move cursor left/down/up/right (also with arrow keys)
@@ -20,7 +23,7 @@
 #   n/N:        Repeat last search, N: in reverse direction
 #   Ctrl-f/b:   Scroll down/up one screen
 #   Ctrl-d/u:   Scroll down/up half a screen
-#   v/V/Ctrl-v: Toggle normal/linewise/blockwise selection
+#   v/V/Ctrl-v/Meta-v: Toggle normal/linewise/blockwise/singleline selection
 #   y/Return:   Copy selection to primary buffer, Return: deactivate afterwards
 #   q/Escape:   Deactivate keyboard selection mode
 
@@ -49,6 +52,12 @@ sub on_user_command {
 			activate($self);
 		} elsif ($cmd eq 'keyboard-select:search') {
 			activate($self, 1);
+		} elsif ($cmd eq 'keyboard-select:prev_singleline') {
+			activate($self, 2);
+		}
+	} else {
+		if ($cmd eq 'keyboard-select:prev_singleline') {
+			move_cursor($self, 'k');
 		}
 	}
 
@@ -115,7 +124,9 @@ sub key_press {
 				$self->selection_grab($event->{time});
 			} else {
 				my ($br, $bc, $er, $ec) = calc_span($self);
-				$ec = $self->line($er)->l if $self->{select} eq 'l';
+				if ($self->{select} eq 'l' or $self->{select} eq 's') {
+					$ec = $self->line($er)->l
+				}
 				$self->selection_beg($br, $bc);
 				$self->selection_end($er, $ec);
 				$self->selection_make($event->{time});
@@ -137,6 +148,8 @@ sub key_press {
 	} elsif ($key eq 'v') {
 		if ($event->{state} & urxvt::ControlMask) {
 			toggle_select($self, 'b');
+		} elsif ($event->{state} & urxvt::Mod1Mask) {
+			toggle_select($self, 's');
 		} else {
 			toggle_select($self, 'n');
 		}
@@ -223,6 +236,11 @@ sub move_cursor {
 	$cc = $self->{dollar} || $self->{offset} >= $line->l ? $line->l - 1 :
 			$self->{offset};
 	$self->screen_cur($line->coord_of($cc));
+
+	if ($self->{select} eq 's') {
+		# restart selection where we are now; gives us singleline
+		($self->{ar}, $self->{ac}) = $self->screen_cur();
+	}
 
 	status_area($self);
 	$self->want_refresh();
@@ -355,7 +373,7 @@ sub tt_write {
 
 sub refresh {
 	my ($self) = @_;
-	my $reverse_cursor = $self->{select} ne 'l';
+	my $reverse_cursor = $self->{select} ne 'l' && $self->{select} ne 's';
 	my ($cr, $cc) = $self->screen_cur();
 
 	if ($self->{select}) {
@@ -403,7 +421,7 @@ sub refresh {
 
 
 sub activate {
-	my ($self, $search) = @_;
+	my ($self, $mode) = @_;
 
 	$self->{active} = 1;
 
@@ -411,7 +429,7 @@ sub activate {
 	$self->{dollar} = 0;
 	$self->{move_to} = 0;
 
-	if ($search) {
+	if ($mode eq 1) {
 		$self->{search} = '?';
 		$self->{search_dir} = -1;
 		$self->{search_mode} = 1;
@@ -441,6 +459,12 @@ sub activate {
 		$self->{offset} = $line->l > 0 ? $line->l - 1 : 0;
 		$self->screen_cur($line->coord_of($self->{offset}));
 		$self->want_refresh();
+	}
+
+	if ($mode eq 2) {
+		# singleline mode; start above the prompt, selection on
+		move_cursor($self, 'k');
+		toggle_select($self, 's');
 	}
 
 	$self->{overlay_len} = 0;
@@ -519,7 +543,8 @@ sub toggle_select {
 	if ($self->{select} eq $mode) {
 		$self->{select} = '';
 	} else {
-		if (not $self->{select}) {
+		# starting selection where we are; always restarting singleline
+		if ((not $self->{select}) || $mode eq 's') {
 			($self->{ar}, $self->{ac}) = $self->screen_cur();
 		}
 		$self->{select} = $mode;
@@ -555,7 +580,7 @@ sub calc_span {
 		}
 	}
 
-	if ($self->{select} eq 'l') {
+	if ($self->{select} eq 'l' || $self->{select} eq 's') {
 		($br, $er) = ($self->line($br)->beg, $self->line($er)->end);
 		($bc, $ec) = (0, $self->ncol);
 	} else {
