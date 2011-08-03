@@ -110,9 +110,11 @@ sub key_press {
 		select_next($self, 1);
 	} elsif ($char eq 'g') {
 		$self->{row} = $self->top_row - 1;
+		delete $self->{found};
 		select_next($self, 1);
 	} elsif ($char eq 'G') {
 		$self->{row} = $self->nrow;
+		delete $self->{found};
 		select_next($self, -1);
 	}
 
