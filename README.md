@@ -53,8 +53,8 @@ After installing, put the following lines in your .Xdefaults/.Xresources:
 
 Use Meta-u to activate URL selection mode, then use the following keys:
 
-    k:        Select next upward URL (also with Meta-u)
-    j:        Select next downward URL
+    j/k:      Select next downward/upward URL
+    g/G:      Select first/last URL
     o/Return: Open selected URL in browser, Return: deactivate afterwards
     y:        Copy (yank) selected URL and deactivate selection mode
     q/Escape: Deactivate URL selection mode

@@ -2,7 +2,7 @@
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
 # Based on: http://www.jukie.net/~bart/blog/urxvt-url-yank
-# Version:  1.5
+# Version:  git-20110803
 # License:  GPLv2
 
 # Use keyboard shortcuts to select URLs.
@@ -14,8 +14,8 @@
 #   URxvt.keysym.M-u: perl:url-select:select_next
 
 # Use Meta-u to activate URL selection mode, then use the following keys:
-#   k:        Select next upward URL (also with Meta-u)
-#   j:        Select next downward URL
+#   j/k:      Select next downward/upward URL
+#   g/G:      Select first/last URL
 #   o/Return: Open selected URL in browser, Return: deactivate afterwards
 #   y:        Copy (yank) selected URL and deactivate selection mode
 #   q/Escape: Deactivate URL selection mode
@@ -108,6 +108,12 @@ sub key_press {
 		select_next($self, -1);
 	} elsif ($char eq 'j') {
 		select_next($self, 1);
+	} elsif ($char eq 'g') {
+		$self->{row} = $self->top_row - 1;
+		select_next($self, 1);
+	} elsif ($char eq 'G') {
+		$self->{row} = $self->nrow;
+		select_next($self, -1);
 	}
 
 	return 1;
