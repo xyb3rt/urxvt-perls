@@ -16,6 +16,8 @@
 # Use Meta-u to activate URL selection mode, then use the following keys:
 #   k:        Select next upward URL (also with Meta-u)
 #   j:        Select next downward URL
+#   g:        Select first URL
+#   G:        Select last URL
 #   o/Return: Open selected URL in browser, Return: deactivate afterwards
 #   y:        Copy (yank) selected URL and deactivate selection mode
 #   q/Escape: Deactivate URL selection mode
@@ -108,6 +110,11 @@ sub key_press {
 		select_next($self, -1);
 	} elsif ($char eq 'j') {
 		select_next($self, 1);
+	} elsif ($char eq 'g' || $char eq 'G') {
+		$self->{row} = $self->nrow - ($char eq 'g');
+		$self->{n} = 0;
+		delete $self->{found};
+		select_next($self, ($char eq 'g') * 2 - 1);
 	}
 
 	return 1;
@@ -161,10 +168,12 @@ sub select_next {
 		return;
 	}
 
-	while (($dir < 0 && $row > $self->top_row) ||
-	       ($dir > 0 && $row < $self->nrow - 1)) {
+	my $total_rows = $self->nrow - $self->top_row;
+	# Make sure we don't get into infinite loop when no url to select
+	my $count = $total_rows;
+	while ($count--) {
 		my $line = $self->line($row);
-		$row = ($dir < 0 ? $line->beg : $line->end) + $dir;
+		$row = (($dir < 0 ? $line->beg : $line->end) + $dir - $self->top_row) % $total_rows + $self->top_row;
 		$line = $self->line($row);
 		my $text = $line->t;
 
