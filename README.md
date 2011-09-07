@@ -24,7 +24,7 @@ After installing, put the following lines in your .Xdefaults/.Xresources:
 The following line overwrites the default Meta-s binding and allows to activate
 keyboard-select directly in backward search mode:
 
-    URxvt.keysym:M-s: perl:keyboard-select:search
+    URxvt.keysym.M-s: perl:keyboard-select:search
 
 Use Meta-Escape to activate selection mode, then use the following keys:
 
