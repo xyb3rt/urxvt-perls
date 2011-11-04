@@ -20,6 +20,10 @@
 #   y:        Copy (yank) selected URL and deactivate selection mode
 #   q/Escape: Deactivate URL selection mode
 
+# Alternate navigation:
+#   up/down & left/right: Select next downward/upward URL
+#   home/end: Select first/last URL
+
 # Options:
 #   URxvt.urlLauncher:   Browser/command to open selected URL with
 #   URxvt.underlineURLs: If set to true, all URLs get underlined
@@ -104,15 +108,15 @@ sub key_press {
 		$self->selection(${$self->{found}[$self->{n}]}[4]);
 		$self->selection_grab($event->{time});
 		deactivate($self);
-	} elsif ($char eq 'k') {
+	} elsif ($char eq 'k' || $keysym == 0xff52 || $keysym == 0xff51) {
 		select_next($self, -1);
-	} elsif ($char eq 'j') {
+	} elsif ($char eq 'j' || $keysym == 0xff54 || $keysym == 0xff53) {
 		select_next($self, 1);
-	} elsif ($char eq 'g') {
+	} elsif ($char eq 'g' || $keysym == 0xff50) {
 		$self->{row} = $self->top_row - 1;
 		delete $self->{found};
 		select_next($self, 1);
-	} elsif ($char eq 'G') {
+	} elsif ($char eq 'G' || $keysym == 0xff57) {
 		$self->{row} = $self->nrow;
 		delete $self->{found};
 		select_next($self, -1);
