@@ -2,7 +2,7 @@
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
 # Based on: http://www.jukie.net/~bart/blog/urxvt-url-yank
-# Version:  git-20111105
+# Version:  git-20111224
 # License:  GPLv2
 
 # Use keyboard shortcuts to select URLs.
@@ -122,32 +122,42 @@ sub key_press {
 }
 
 
+sub on_button_press {
+	my ($self, $event) = @_;
+
+	my $mask = $self->ModLevel3Mask | $self->ModMetaMask |
+	           urxvt::ShiftMask | urxvt::ControlMask;
+
+	if ($event->{button} == $self->{button} && ($event->{state} & $mask) == 0) {
+		$self->{button_pressed} = 1;
+		$self->{button_col} = $event->{col};
+		$self->{button_row} = $event->{row};
+	}
+
+	()
+}
+
 sub on_button_release {
 	my ($self, $event) = @_;
 
-	if ($self->{active}) {
-		if ($event->{button} == 4 || $event->{button} == 5) {
-			return;
-		} else {
-			return 1;
-		}
-	}
-
-	my $mask = $self->ModLevel3Mask | $self->ModMetaMask |
-			urxvt::ShiftMask | urxvt::ControlMask;
-
-	if ($event->{button} == $self->{button} && ($event->{state} & $mask) == 0) {
+	if ($self->{button_pressed} && $event->{button} == $self->{button}) {
 		my $col = $event->{col};
-		my $line = $self->line($event->{row});
-		my $text = $line->t;
+		my $row = $event->{row};
 
-		while ($text =~ /$url_matcher/g) {
-			my ($url, $beg, $end) = ($1, $-[0], $+[0]);
-			--$end if $url =~ s/["')]$//;
+		$self->{button_pressed} = 0;
 
-			if ($col >= $beg && $col <= $end) {
-				$self->exec_async(@{$self->{browser}}, $url);
-				return 1;
+		if ($col == $self->{button_col} && $row == $self->{button_row}) {
+			my $line = $self->line($row);
+			my $text = $line->t;
+
+			while ($text =~ /$url_matcher/g) {
+				my ($url, $beg, $end) = ($1, $-[0], $+[0]);
+				--$end if $url =~ s/["')]$//;
+
+				if ($col >= $beg && $col <= $end) {
+					$self->exec_async(@{$self->{browser}}, $url);
+					return 1;
+				}
 			}
 		}
 	}
@@ -276,6 +286,7 @@ sub activate {
 	$self->{row} = $self->view_start() + $self->nrow;
 	$self->{n} = 0;
 	$self->{overlay_len} = 0;
+	$self->{button_pressed} = 0;
 
 	$self->{view_start} = $self->view_start();
 	$self->{pty_ev_events} = $self->pty_ev_events(urxvt::EV_NONE);
