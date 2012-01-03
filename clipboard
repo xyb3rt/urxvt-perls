@@ -57,7 +57,7 @@ sub paste {
 
 	my $str = `$self->{paste_cmd}`;
 	if ($? == 0) {
-		$self->tt_paste($self->locale_encode($str));
+		$self->tt_paste($str);
 	} else {
 		print STDERR "error running '$self->{paste_cmd}': $!\n";
 	}
@@ -71,7 +71,7 @@ sub paste_escaped {
 	my $str = `$self->{paste_cmd}`;
 	if ($? == 0) {
 		$str =~ s/([!#\$%&\*\(\) ='"\\\|\[\]`~,<>\?])/\\\1/g;
-		$self->tt_paste($self->locale_encode($str));
+		$self->tt_paste($str);
 	} else {
 		print STDERR "error running '$self->{paste_cmd}': $!\n";
 	}
