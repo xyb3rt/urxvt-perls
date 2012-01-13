@@ -24,11 +24,7 @@
 #   URxvt.urlLauncher:   Browser/command to open selected URL with
 #   URxvt.underlineURLs: If set to true, all URLs get underlined
 #   URvxt.urlButton:     Mouse button to click-open URLs (default: 2)
-#   URxvt.urlCopier:     Command to copy the URL to the clipboard (optional)
-#                        Recommended (and tested) - the following script:
-#                        #!/bin/sh
-#                        echo -n "$*" | xclip -in
-
+#   URxvt.autoCopyURLs:  If set to true, selected URLs are copied
 
 
 use strict;
@@ -42,12 +38,6 @@ sub on_start {
 	my ($self) = @_;
 
 	# read resource settings
-    if ($self->x_resource('urlCopier')) {
-        @{$self->{copier}} = split /\s+/, $self->x_resource('urlCopier');
-    } else {
-        @{$self->{copier}} = ();
-    }
-
 	if ($self->x_resource('urlLauncher')) {
 		@{$self->{browser}} = split /\s+/, $self->x_resource('urlLauncher');
 	} else {
@@ -55,6 +45,9 @@ sub on_start {
 	}
 	if ($self->x_resource('underlineURLs') eq 'true') {
 		$self->enable(line_update => \&line_update);
+	}
+	if ($self->x_resource('autoCopyURLs') eq 'true') {
+		$self->{copy} = 1;
 	}
 	if($self->x_resource('urlButton') =~ /^\d+$/) {
 		$self->{button} = $self->x_resource('urlButton');
@@ -116,17 +109,17 @@ sub key_press {
 		$self->selection_grab($event->{time});
 		deactivate($self);
 	} elsif ($char eq 'k' || $keysym == 0xff52 || $keysym == 0xff51) {
-		select_next($self, -1);
+		select_next($self, -1, $event);
 	} elsif ($char eq 'j' || $keysym == 0xff54 || $keysym == 0xff53) {
-		select_next($self, 1);
+		select_next($self, 1, $event);
 	} elsif ($char eq 'g' || $keysym == 0xff50) {
 		$self->{row} = $self->top_row - 1;
 		delete $self->{found};
-		select_next($self, 1);
+		select_next($self, 1, $event);
 	} elsif ($char eq 'G' || $keysym == 0xff57) {
 		$self->{row} = $self->nrow;
 		delete $self->{found};
-		select_next($self, -1);
+		select_next($self, -1, $event);
 	}
 
 	return 1;
@@ -179,7 +172,7 @@ sub on_button_release {
 
 sub select_next {
 	# $dir < 0: up, > 0: down
-	my ($self, $dir) = @_;
+	my ($self, $dir, $event) = @_;
 	my $row = $self->{row};
 
 	if (($dir < 0 && $self->{n} > 0) ||
@@ -187,12 +180,15 @@ sub select_next {
 		# another url on current line
 		$self->{n} += $dir;
 		hilight($self);
-		$self->exec_async(@{$self->{copier}}, $self->{found}->[$self->{n}]->[4]) if $self->{copier};
+		if ($self->{copy}) {
+			$self->selection($self->{found}->[$self->{n}]->[4]);
+			$self->selection_grab($event->{time});
+		}
 		return;
 	}
 
 	while (($dir < 0 && $row > $self->top_row) ||
-	       ($dir > 0 && $row < $self->nrow - 1)) {
+		   ($dir > 0 && $row < $self->nrow - 1)) {
 		my $line = $self->line($row);
 		$row = ($dir < 0 ? $line->beg : $line->end) + $dir;
 		$line = $self->line($row);
@@ -211,7 +207,10 @@ sub select_next {
 			$self->{row} = $row;
 			$self->{n} = $dir < 0 ? $#{$self->{found}} : 0;
 			hilight($self);
-			$self->exec_async(@{$self->{copier}}, $self->{found}->[$self->{n}]->[4]) if $self->{copier};
+			if ($self->{copy}) {
+				$self->selection($self->{found}->[$self->{n}]->[4]);
+				$self->selection_grab($event->{time});
+			}
 			return;
 		}
 	}
