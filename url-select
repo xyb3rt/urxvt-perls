@@ -2,7 +2,7 @@
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
 # Based on: http://www.jukie.net/~bart/blog/urxvt-url-yank
-# Version:  git-20111224
+# Version:  git-20120120
 # License:  GPLv2
 
 # Use keyboard shortcuts to select URLs.
@@ -105,8 +105,12 @@ sub key_press {
 		$self->exec_async(@{$self->{browser}}, ${$self->{found}[$self->{n}]}[4]);
 		deactivate($self) unless $char eq 'o';
 	} elsif ($char eq 'y') {
-		$self->selection(${$self->{found}[$self->{n}]}[4]);
-		$self->selection_grab($event->{time});
+		my $found = $self->{found}[$self->{n}];
+		$self->selection_beg(${$found}[0], ${$found}[1]);
+		$self->selection_end(${$found}[2], ${$found}[3]);
+		$self->selection_make($event->{time});
+		$self->selection_beg(1, 0);
+		$self->selection_end(1, 0);
 		deactivate($self);
 	} elsif ($char eq 'k' || $keysym == 0xff52 || $keysym == 0xff51) {
 		select_next($self, -1, $event);
