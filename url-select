@@ -25,7 +25,7 @@
 #   URxvt.underlineURLs: If set to true, all URLs get underlined
 #   URvxt.urlButton:     Mouse button to click-open URLs (default: 2)
 #   URxvt.autoCopyURLs:  If set to true, selected URLs are copied
-
+#                        to the PRIMARY clipboard
 
 use strict;
 
