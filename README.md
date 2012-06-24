@@ -64,6 +64,8 @@ Options:
     URxvt.urlLauncher:   browser/command to open selected URL with
     URxvt.underlineURLs: if set to true, all URLs get underlined
     URvxt.urlButton:     mouse button to click-open URLs (default: 2)
+    URxvt.autoCopyURLs:  If set to true, selected URLs are automaticaly copied
+                         to the PRIMARY clipboard
 
 
 clipboard
