@@ -2,7 +2,7 @@
 # Author:   Bert Muennich
 # Website:  http://www.github.com/muennich/urxvt-perls
 # Based on: http://www.jukie.net/~bart/blog/urxvt-url-yank
-# Version:  git-20120120
+# Version:  git-20120710
 # License:  GPLv2
 
 # Use keyboard shortcuts to select URLs.
@@ -55,7 +55,6 @@ sub on_start {
 
 		while ($self->x_resource("matcher.pattern.$current")) {
 			push @{$self->{pattern}}, $self->x_resource("matcher.pattern.$current");
-
 			$current++;
 		}
 	} else {

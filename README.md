@@ -65,6 +65,9 @@ Options:
     URxvt.underlineURLs: if set to true, all URLs get underlined
     URvxt.urlButton:     mouse button to click-open URLs (default: 2)
 
+For compatibility reasons, url-select will also use any patterns defined for
+the matcher extension by reading all `URxvt.matcher.pattern.[0-9]` resources.
+
 
 clipboard
 ---------
