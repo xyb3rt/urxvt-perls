@@ -58,10 +58,10 @@ sub on_start {
 			$current++;
 		}
 	} else {
-		@{$self->{pattern}} = (qr{
+		@{$self->{pattern}} = qr{(
 			(?:https?://|ftp://|news://|mailto:|file://|www\.)
 			[\w\-\@;\/?:&=%\$_.+!*\x27(),~#]+[\w\-\@;\/?&=%\$_+!*\x27()~]
-		}x);
+		)}x;
 	}
 
 	()
