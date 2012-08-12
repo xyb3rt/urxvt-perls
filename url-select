@@ -21,10 +21,11 @@
 #   q/Escape: Deactivate URL selection mode
 
 # Options:
-#   URxvt.urlLauncher:   Browser/command to open selected URL with
-#   URxvt.underlineURLs: If set to true, all URLs get underlined
-#   URvxt.urlButton:     Mouse button to click-open URLs (default: 2)
-
+#   URxvt.url-select.launcher:  Browser/command to open selected URL with
+#   URxvt.url-select.underline: If set to true, all URLs get underlined
+#   URvxt.url-select.button:    Mouse button to click-open URLs (default: 2)
+#   URxvt.url-select.autocopy:  If set to true, selected URLs are copied
+#                               to the PRIMARY clipboard
 
 use strict;
 
@@ -32,22 +33,25 @@ sub on_start {
 	my ($self) = @_;
 
 	# read resource settings
-	if ($self->x_resource('urlLauncher')) {
-		@{$self->{browser}} = split /\s+/, $self->x_resource('urlLauncher');
+	if ($self->x_resource('url-select.launcher')) {
+		@{$self->{browser}} = split /\s+/, $self->x_resource('url-select.launcher');
 	} else {
 		@{$self->{browser}} = ('x-www-browser');
 	}
-	if ($self->x_resource('underlineURLs') eq 'true') {
+	if ($self->x_resource('url-select.underline') eq 'true') {
 		$self->enable(line_update => \&line_update);
 	}
-	if ($self->x_resource('urlButton') =~ /^\d+$/) {
-		$self->{button} = $self->x_resource('urlButton');
+	if ($self->x_resource('url-select.button') =~ /^\d+$/) {
+		$self->{button} = $self->x_resource('url-select.button');
 	} elsif ($self->x_resource('matcher.button') =~ /^\d+$/) {
 		$self->{button} = $self->x_resource('matcher.button');
 	} else {
 		$self->{button} = 2;
 	}
 
+	if ($self->x_resource('url-select.autocopy') eq 'true') {
+		$self->{copy} = 1;
+	}
 	if ($self->x_resource('matcher.pattern')) {
 		@{$self->{pattern}} = ($self->x_resource('matcher.pattern'));
 	} elsif ($self->x_resource('matcher.pattern.1')) {
@@ -124,17 +128,17 @@ sub key_press {
 		$self->selection_end(1, 0);
 		deactivate($self);
 	} elsif ($char eq 'k' || $keysym == 0xff52 || $keysym == 0xff51) {
-		select_next($self, -1);
+		select_next($self, -1, $event);
 	} elsif ($char eq 'j' || $keysym == 0xff54 || $keysym == 0xff53) {
-		select_next($self, 1);
+		select_next($self, 1, $event);
 	} elsif ($char eq 'g' || $keysym == 0xff50) {
 		$self->{row} = $self->top_row - 1;
 		delete $self->{found};
-		select_next($self, 1);
+		select_next($self, 1, $event);
 	} elsif ($char eq 'G' || $keysym == 0xff57) {
 		$self->{row} = $self->nrow;
 		delete $self->{found};
-		select_next($self, -1);
+		select_next($self, -1, $event);
 	}
 
 	return 1;
@@ -189,7 +193,7 @@ sub on_button_release {
 
 sub select_next {
 	# $dir < 0: up, > 0: down
-	my ($self, $dir) = @_;
+	my ($self, $dir, $event) = @_;
 	my $row = $self->{row};
 
 	if (($dir < 0 && $self->{n} > 0) ||
@@ -197,11 +201,19 @@ sub select_next {
 		# another url on current line
 		$self->{n} += $dir;
 		hilight($self);
+		if ($self->{copy}) {
+			my $found = $self->{found}[$self->{n}];
+			$self->selection_beg(${$found}[0], ${$found}[1]);
+			$self->selection_end(${$found}[2], ${$found}[3]);
+			$self->selection_make($event->{time});
+			$self->selection_beg(1, 0);
+			$self->selection_end(1, 0);
+		}
 		return;
 	}
 
 	while (($dir < 0 && $row > $self->top_row) ||
-	       ($dir > 0 && $row < $self->nrow - 1)) {
+		   ($dir > 0 && $row < $self->nrow - 1)) {
 		my $line = $self->line($row);
 		$row = ($dir < 0 ? $line->beg : $line->end) + $dir;
 		$line = $self->line($row);
@@ -221,11 +233,19 @@ sub select_next {
 				$self->{row} = $row;
 				$self->{n} = $dir < 0 ? $#{$self->{found}} : 0;
 				hilight($self);
+				if ($self->{copy}) {
+					my $found = $self->{found}[$self->{n}];
+					$self->selection_beg(${$found}[0], ${$found}[1]);
+					$self->selection_end(${$found}[2], ${$found}[3]);
+					$self->selection_make($event->{time});
+					$self->selection_beg(1, 0);
+					$self->selection_end(1, 0);
+				}
 				return;
 			}
 		}
 	}
-	
+
 	deactivate($self) unless $self->{found};
 
 	()
@@ -341,4 +361,3 @@ sub deactivate {
 
 	()
 }
-
