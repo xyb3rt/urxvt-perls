@@ -21,10 +21,10 @@
 #   q/Escape: Deactivate URL selection mode
 
 # Options:
-#   URxvt.autoCopyURLs:  If set to true, selected URLs are copied
+#   URxvt.url-select.autocopy:  If true, selected URLs are copied to PRIMARY
+#   URvxt.url-select.button:    Mouse button to click-open URLs (default: 2)
 #   URxvt.url-select.launcher:  Browser/command to open selected URL with
 #   URxvt.url-select.underline: If set to true, all URLs get underlined
-#   URvxt.url-select.button:    Mouse button to click-open URLs (default: 2)
 
 use strict;
 
@@ -40,8 +40,8 @@ sub on_start {
 	if ($self->x_resource('url-select.underline') eq 'true') {
 		$self->enable(line_update => \&line_update);
 	}
-	if ($self->x_resource('autoCopyURLs') eq 'true') {
-		$self->{copy} = 1;
+	if ($self->x_resource('url-select.autocopy') eq 'true') {
+		$self->{autocopy} = 1;
 	}
 	if ($self->x_resource('url-select.button') =~ /^\d+$/) {
 		$self->{button} = $self->x_resource('url-select.button');
@@ -200,7 +200,7 @@ sub select_next {
 		# another url on current line
 		$self->{n} += $dir;
 		hilight($self);
-		if ($self->{copy}) {
+		if ($self->{autocopy}) {
 			my $found = $self->{found}[$self->{n}];
 			$self->selection_beg(${$found}[0], ${$found}[1]);
 			$self->selection_end(${$found}[2], ${$found}[3]);
@@ -232,7 +232,7 @@ sub select_next {
 				$self->{row} = $row;
 				$self->{n} = $dir < 0 ? $#{$self->{found}} : 0;
 				hilight($self);
-				if ($self->{copy}) {
+				if ($self->{autocopy}) {
 					my $found = $self->{found}[$self->{n}];
 					$self->selection_beg(${$found}[0], ${$found}[1]);
 					$self->selection_end(${$found}[2], ${$found}[3]);
