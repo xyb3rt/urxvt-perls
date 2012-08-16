@@ -64,6 +64,8 @@ Options:
     URxvt.urlLauncher:   browser/command to open selected URL with
     URxvt.underlineURLs: if set to true, all URLs get underlined
     URvxt.urlButton:     mouse button to click-open URLs (default: 2)
+    URxvt.autoCopyURLs:  If set to true, selected URLs are automaticaly copied
+                         to the PRIMARY clipboard
 
 For compatibility reasons, url-select will also use any patterns defined for
 the matcher extension by reading all `URxvt.matcher.pattern.[0-9]` resources.
