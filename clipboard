@@ -34,7 +34,7 @@ sub on_start {
 	$self->{copy_cmd} = $self->x_resource('clipboard.copycmd') || 'xsel -ib';
 	$self->{paste_cmd} = $self->x_resource('clipboard.pastecmd') || 'xsel -ob';
 
-	if ($self->x_resource('clipboard.autocopy' eq 'true') {
+	if ($self->x_resource('clipboard.autocopy' eq 'true')) {
 		$self->enable(sel_grab => \&sel_grab);
 	}
 
