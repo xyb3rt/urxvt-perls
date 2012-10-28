@@ -13,6 +13,9 @@
 #   URxvt.keysym.M-v:   perl:clipboard:paste
 #   URxvt.keysym.M-C-v: perl:clipboard:paste_escaped
 
+# Options:
+#   URxvt.clipboard.autocopy: If true, PRIMARY overwrites clipboard
+
 # You can also overwrite the system commands to use for copying/pasting.
 # The default ones are:
 #   URxvt.clipboard.copycmd:  xsel -ib

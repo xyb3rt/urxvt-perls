@@ -83,6 +83,10 @@ After installing, put the following lines in your .Xdefaults/.Xresources:
     URxvt.keysym.M-v:   perl:clipboard:paste
     URxvt.keysym.M-C-v: perl:clipboard:paste_escaped
 
+Options:
+    URxvt.clipboard.autocopy: if set to true, the clipboard is automatically
+                              updated whenever the PRIMARY selection changes
+
 You can also overwrite the system commands to use for copying/pasting.
 The default ones are:
 
