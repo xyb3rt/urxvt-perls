@@ -63,7 +63,7 @@ Options:
 
     URxvt.url-select.autocopy:  if set to true, selected URLs are automatically
                                 copied to the PRIMARY buffer
-    URvxt.url-select.button:    mouse button to click-open URLs (default: 2)
+    URxvt.url-select.button:    mouse button to click-open URLs (default: 2)
     URxvt.url-select.launcher:  browser/command to open selected URL with
     URxvt.url-select.underline: if set to true, all URLs get underlined
 
