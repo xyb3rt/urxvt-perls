@@ -61,7 +61,7 @@ sub on_start {
 		}
 	} else {
 		@{$self->{pattern}} = qr{(
-			(?:https?://|ftp://|news://|mailto:|file://|www\.)
+			(?:https?://|ftp://|news://|git://|mailto:|file://|www\.)
 			[\w\-\@;\/?:&=%\$_.+!*\x27(),~#]+[\w\-\@;\/?&=%\$_+!*\x27()~]
 		)}x;
 	}
