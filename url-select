@@ -42,12 +42,21 @@ sub on_start {
 	if ($self->x_resource('url-select.autocopy') eq 'true') {
 		$self->{autocopy} = 1;
 	}
-	if ($self->x_resource('url-select.button') =~ /^\d+$/) {
-		$self->{button} = $self->x_resource('url-select.button');
-	} elsif ($self->x_resource('matcher.button') =~ /^\d+$/) {
-		$self->{button} = $self->x_resource('matcher.button');
-	} else {
-		$self->{button} = 2;
+
+	$self->{state} = 0;
+	for my $mod (split '', $self->x_resource("url-select.button") ||
+		$self->x_resource("matcher.button") || 2) {
+		if ($mod =~ /^\d+$/) {
+			$self->{button} = $mod;
+		} elsif ($mod eq "C") {
+			$self->{state} |= urxvt::ControlMask;
+		} elsif ($mod eq "S") {
+			$self->{state} |= urxvt::ShiftMask;
+		} elsif ($mod eq "M") {
+			$self->{state} |= $self->ModMetaMask;
+		} elsif ($mod ne "-" && $mod ne " ") {
+			warn("$mod is invalid button/modifier in $self->{_name}<$self->{argv}[0]>\n");
+		}
 	}
 
 	if ($self->x_resource('matcher.pattern')) {
@@ -149,7 +158,7 @@ sub on_button_press {
 	my $mask = $self->ModLevel3Mask | $self->ModMetaMask |
 	           urxvt::ShiftMask | urxvt::ControlMask;
 
-	if ($event->{button} == $self->{button} && ($event->{state} & $mask) == 0) {
+	if ($event->{button} == $self->{button} && ($event->{state} & $mask) == $self->{state}) {
 		$self->{button_pressed} = 1;
 		$self->{button_col} = $event->{col};
 		$self->{button_row} = $event->{row};
