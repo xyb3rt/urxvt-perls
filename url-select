@@ -44,8 +44,9 @@ sub on_start {
 	}
 
 	$self->{state} = 0;
+
 	for my $mod (split '', $self->x_resource("url-select.button") ||
-		$self->x_resource("matcher.button") || 2) {
+	                       $self->x_resource("matcher.button") || 2) {
 		if ($mod =~ /^\d+$/) {
 			$self->{button} = $mod;
 		} elsif ($mod eq "C") {
@@ -55,7 +56,7 @@ sub on_start {
 		} elsif ($mod eq "M") {
 			$self->{state} |= $self->ModMetaMask;
 		} elsif ($mod ne "-" && $mod ne " ") {
-			warn("$mod is invalid button/modifier in $self->{_name}<$self->{argv}[0]>\n");
+			warn("invalid button/modifier in $self->{_name}<$self->{argv}[0]>: $mod\n");
 		}
 	}
 
