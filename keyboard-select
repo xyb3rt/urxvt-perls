@@ -59,7 +59,9 @@ sub key_press {
 	my ($self, $event, $keysym, $char) = @_;
 	my $key = chr($keysym);
 
-	if ($self->{search}) {
+	if (lc($key) eq 'c' && $event->{state} & urxvt::ControlMask) {
+		deactivate($self);
+	} elsif ($self->{search}) {
 		if ($keysym == 0xff1b) {
 			if ($self->{search_mode}) {
 				deactivate($self);

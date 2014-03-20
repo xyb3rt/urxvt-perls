@@ -122,7 +122,8 @@ sub key_press {
 	my ($self, $event, $keysym) = @_;
 	my $char = chr($keysym);
 
-	if ($keysym == 0xff1b || lc($char) eq 'q') {
+	if ($keysym == 0xff1b || lc($char) eq 'q' ||
+	    (lc($char) eq 'c' && $event->{state} & urxvt::ControlMask)) {
 		deactivate($self);
 	} elsif ($keysym == 0xff0d || $char eq 'o') {
 		$self->exec_async(@{$self->{browser}}, ${$self->{found}[$self->{n}]}[4]);
