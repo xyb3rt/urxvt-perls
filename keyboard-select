@@ -60,7 +60,8 @@ sub key_press {
 	my $key = chr($keysym);
 
 	if ($self->{search}) {
-		if ($keysym == 0xff1b) {
+		if ($keysym == 0xff1b ||
+			(lc($key) eq 'c' && $event->{state} & urxvt::ControlMask)) {
 			if ($self->{search_mode}) {
 				deactivate($self);
 			} else {
@@ -95,7 +96,8 @@ sub key_press {
 			status_area($self);
 		}
 	} elsif ($self->{move_to}) {
-		if ($keysym == 0xff1b) {
+		if ($keysym == 0xff1b ||
+			(lc($key) eq 'c' && $event->{state} & urxvt::ControlMask)) {
 			$self->{move_to} = 0;
 			status_area($self);
 		} elsif (length($char) > 0) {
@@ -105,7 +107,8 @@ sub key_press {
 			move_to($self, ';');
 			status_area($self);
 		}
-	} elsif ($keysym == 0xff1b || lc($key) eq 'q') {
+	} elsif ($keysym == 0xff1b || lc($key) eq 'q' ||
+			(lc($key) eq 'c' && $event->{state} & urxvt::ControlMask)) {
 		deactivate($self);
 	} elsif ($key eq 'y' || $keysym == 0xff0d) {
 		if ($self->{select}) {
