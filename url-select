@@ -70,10 +70,15 @@ sub on_start {
 			$current++;
 		}
 	} else {
-		@{$self->{pattern}} = qr{(
-			(?:https?://|ftp://|news://|git://|mailto:|file://|www\.)
-			[\w\-\@;\/?:&=%\$_.+!*\x27(),~#]+[\w\-\@;\/?&=%\$_+!*\x27()~]
-		)}x;
+		@{$self->{pattern}} = qr{
+			(?:https?://|ftp://|news://|mailto:|file://|\bwww\.)
+			[\w\-\@;\/?:&=%\$.+!*\x27,~#]*
+			(
+				\([\w\-\@;\/?:&=%\$.+!*\x27,~#]*\)   # Allow a pair of matched parentheses
+				|                                    #
+				[\w\-\@;\/?:&=%\$+*~]                # exclude some trailing characters (heuristic)
+			)+
+		}x;
 	}
 
 	()
@@ -234,7 +239,6 @@ sub select_next {
 
 				do {
 					my ($beg, $end) = ($-[0], $+[0]);
-					--$end if $& =~ /['")]$/;
 					push @{$self->{found}}, [$line->coord_of($beg),
 							$line->coord_of($end), substr($text, $beg, $end - $beg)];
 				} while ($text =~ /$pattern/g);
