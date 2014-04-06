@@ -2,9 +2,10 @@ A small collection of perl extensions for the rxvt-unicode terminal emulator.
 
 Installation
 ------------
-Simply place the scripts you want to install in the /usr/lib/urxvt/perl/ folder
-for system-wide availability. You can also put them in a folder of your
-choice, but then you have to add this line to your .Xdefaults/.Xresources:
+Simply place the scripts you want to install in /usr/lib/urxvt/perl/ for
+system-wide availability or in ~/.urxvt/ext/ for user-only availability.
+You can also put them in a folder of your choice, but then you have to add this
+line to your .Xdefaults/.Xresources:
 
     URxvt.perl-lib: /your/folder/
 
