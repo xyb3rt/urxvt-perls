@@ -65,8 +65,10 @@ sub on_start {
 	} elsif ($self->x_resource('matcher.pattern.1')) {
 		my $current = 1;
 
-		while ($self->x_resource("matcher.pattern.$current")) {
-			push @{$self->{pattern}}, $self->x_resource("matcher.pattern.$current");
+		while (defined (my $res = $self->x_resource("matcher.pattern.$current"))) {
+			$res = $self->locale_decode($res);
+			utf8::encode $res;
+			push @{$self->{pattern}}, qr($res)x;
 			$current++;
 		}
 	} else {
