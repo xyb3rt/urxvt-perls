@@ -34,7 +34,7 @@ sub on_start {
 	if ($self->x_resource('url-select.launcher')) {
 		@{$self->{browser}} = split /\s+/, $self->x_resource('url-select.launcher');
 	} else {
-		@{$self->{browser}} = ('x-www-browser');
+		@{$self->{browser}} = ('sensible-browser');
 	}
 	if ($self->x_resource('url-select.underline') eq 'true') {
 		$self->enable(line_update => \&line_update);
