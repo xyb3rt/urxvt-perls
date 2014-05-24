@@ -33,8 +33,10 @@ sub on_start {
 	# read resource settings
 	if ($self->x_resource('url-select.launcher')) {
 		@{$self->{browser}} = split /\s+/, $self->x_resource('url-select.launcher');
+	} elsif ($self->x_resource('url-launcher')) {
+		@{$self->{browser}} = split /\s+/, $self->x_resource('url-launcher');
 	} else {
-		@{$self->{browser}} = ('x-www-browser');
+		@{$self->{browser}} = ('sensible-browser');
 	}
 	if ($self->x_resource('url-select.underline') eq 'true') {
 		$self->enable(line_update => \&line_update);
@@ -45,20 +47,23 @@ sub on_start {
 
 	$self->{state} = 0;
 
-	for my $mod (split '', $self->x_resource("url-select.button") ||
-	                       $self->x_resource("matcher.button") || 2) {
-		if ($mod =~ /^\d+$/) {
-			$self->{button} = $mod;
-		} elsif ($mod eq "C") {
-			$self->{state} |= urxvt::ControlMask;
-		} elsif ($mod eq "S") {
-			$self->{state} |= urxvt::ShiftMask;
-		} elsif ($mod eq "M") {
-			$self->{state} |= $self->ModMetaMask;
-		} elsif ($mod ne "-" && $mod ne " ") {
-			warn("invalid button/modifier in $self->{_name}<$self->{argv}[0]>: $mod\n");
-		}
-	}
+    $self->{button} = -1;
+    if ($self->x_resource("perl-ext") !~ /\bmatcher\b/ && $self->x_resource("perl-ext-common") !~ /\bmatcher\b/) {
+        for my $mod (split '', $self->x_resource("url-select.button") ||
+            $self->x_resource("matcher.button") || 2) {
+            if ($mod =~ /^\d+$/) {
+                $self->{button} = $mod;
+            } elsif ($mod eq "C") {
+                $self->{state} |= urxvt::ControlMask;
+            } elsif ($mod eq "S") {
+                $self->{state} |= urxvt::ShiftMask;
+            } elsif ($mod eq "M") {
+                $self->{state} |= $self->ModMetaMask;
+            } elsif ($mod ne "-" && $mod ne " ") {
+                warn("invalid button/modifier in $self->{_name}<$self->{argv}[0]>: $mod\n");
+            }
+        }
+    }
 
 	if ($self->x_resource('matcher.pattern')) {
 		@{$self->{pattern}} = ($self->x_resource('matcher.pattern'));
