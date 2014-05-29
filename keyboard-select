@@ -85,6 +85,7 @@ sub key_press {
 				delete $self->{pattern};
 			}
 			$self->{search} = '';
+			$self->screen_cur($self->{srhcr}, $self->{srhcc});
 			if (not find_next($self)) {
 				if ($self->{search_mode}) {
 					deactivate($self);
@@ -94,6 +95,15 @@ sub key_press {
 			}
 		} elsif (length($char) > 0) {
 			$self->{search} .= $self->locale_decode($char);
+			my $txt = substr($self->{search}, 1);
+			if ($txt) {
+				$self->{pattern} = ($txt =~ m/[[:upper:]]/) ? qr/\Q$txt\E/ :
+				qr/\Q$txt\E/i;
+			} elsif ($self->{pattern}) {
+				delete $self->{pattern};
+			}
+			$self->screen_cur($self->{srhcr}, $self->{srhcc});
+			find_next($self);
 			status_area($self);
 		}
 	} elsif ($self->{move_to}) {
@@ -161,6 +171,7 @@ sub key_press {
 	} elsif ($key eq '/' || $key eq '?') {
 		$self->{search} = $key;
 		$self->{search_dir} = $key eq '?' ? -1 : 1;
+		($self->{srhcr}, $self->{srhcc}) = $self->screen_cur();
 		status_area($self);
 	} elsif (lc($key) eq 'n') {
 		find_next($self, $self->{search_dir} * ($key eq 'N' ? -1 : 1));
@@ -422,6 +433,7 @@ sub activate {
 	}
 
 	($self->{oldcr}, $self->{oldcc}) = $self->screen_cur();
+	($self->{srhcr}, $self->{srhcc}) = $self->screen_cur();
 	$self->{old_view_start} = $self->view_start();
 	$self->{old_pty_ev_events} = $self->pty_ev_events(urxvt::EV_NONE);
 
