@@ -167,9 +167,25 @@ sub on_button_press {
 	           urxvt::ShiftMask | urxvt::ControlMask;
 
 	if ($event->{button} == $self->{button} && ($event->{state} & $mask) == $self->{state}) {
-		$self->{button_pressed} = 1;
-		$self->{button_col} = $event->{col};
-		$self->{button_row} = $event->{row};
+		my $col = $event->{col};
+		my $row = $event->{row};
+		my $line = $self->line($row);
+		my $text = $line->t;
+
+		for my $pattern (@{$self->{pattern}}) {
+			while ($text =~ /$pattern/g) {
+				my ($url, $beg, $end) = ($&, $-[0], $+[0]);
+				--$end if $url =~ s/["')]$//;
+
+				if ($col >= $beg && $col <= $end) {
+					$self->{button_pressed} = 1;
+					$self->{button_col} = $col;
+					$self->{button_row} = $row;
+					$self->{button_url} = $url;
+					return 1;
+				}
+			}
+		}
 	}
 
 	()
@@ -185,20 +201,8 @@ sub on_button_release {
 		$self->{button_pressed} = 0;
 
 		if ($col == $self->{button_col} && $row == $self->{button_row}) {
-			my $line = $self->line($row);
-			my $text = $line->t;
-
-			for my $pattern (@{$self->{pattern}}) {
-				while ($text =~ /$pattern/g) {
-					my ($url, $beg, $end) = ($&, $-[0], $+[0]);
-					--$end if $url =~ s/["')]$//;
-
-					if ($col >= $beg && $col <= $end) {
-						$self->exec_async(@{$self->{browser}}, $url);
-						return 1;
-					}
-				}
-			}
+			$self->exec_async(@{$self->{browser}}, $self->{button_url});
+			return 1;
 		}
 	}
 
