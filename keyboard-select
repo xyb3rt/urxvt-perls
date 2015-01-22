@@ -40,6 +40,13 @@ sub on_start{
 }
 
 
+sub on_action {
+    my ($self, $action) = @_;
+
+    on_user_command($self, "keyboard-select:" . $action);
+}
+
+
 sub on_user_command {
 	my ($self, $cmd) = @_;
 
