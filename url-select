@@ -27,6 +27,10 @@
 
 use strict;
 
+# The custom rendition bit to use for marking the cell as being underlined
+# by us so we can unset it again after a line has changed.
+use constant UNDERLINED => 1<<3; # arbitrarily chosen in hope of no collision
+
 sub on_start {
 	my ($self) = @_;
 
@@ -94,17 +98,30 @@ sub line_update {
 	my $text = $line->t;
 	my $rend = $line->r;
 
+	# clear all underlines that were set by us
+	for (@$rend) {
+		if (urxvt::GET_CUSTOM($_) & UNDERLINED) {
+			$_ = urxvt::SET_CUSTOM($_, urxvt::GET_CUSTOM($_)
+                & ~UNDERLINED) & ~urxvt::RS_Uline;
+		}
+	}
+
 	for my $pattern (@{$self->{pattern}}) {
 		while ($text =~ /$pattern/g) {
 			my $url = $&;
 			my ($beg, $end) = ($-[0], $+[0] - 1);
 
 			for (@{$rend}[$beg .. $end]) {
-				$_ |= urxvt::RS_Uline;
+				unless ($_ & urxvt::RS_Uline) {
+					$_ = urxvt::SET_CUSTOM($_, urxvt::GET_CUSTOM($_)
+						| UNDERLINED);
+					$_ |= urxvt::RS_Uline;
+				}
 			}
-			$line->r($rend);
 		}
 	}
+
+	$line->r($rend);
 
 	()
 }
