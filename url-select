@@ -101,8 +101,8 @@ sub line_update {
 	# clear all underlines that were set by us
 	for (@$rend) {
 		if (urxvt::GET_CUSTOM($_) & UNDERLINED) {
-			$_ = urxvt::SET_CUSTOM($_, urxvt::GET_CUSTOM($_)
-                & ~UNDERLINED) & ~urxvt::RS_Uline;
+			$_ = urxvt::SET_CUSTOM($_, urxvt::GET_CUSTOM($_) & ~UNDERLINED) &
+			     ~urxvt::RS_Uline;
 		}
 	}
 
@@ -113,8 +113,7 @@ sub line_update {
 
 			for (@{$rend}[$beg .. $end]) {
 				unless ($_ & urxvt::RS_Uline) {
-					$_ = urxvt::SET_CUSTOM($_, urxvt::GET_CUSTOM($_)
-						| UNDERLINED);
+					$_ = urxvt::SET_CUSTOM($_, urxvt::GET_CUSTOM($_) | UNDERLINED);
 					$_ |= urxvt::RS_Uline;
 				}
 			}
@@ -255,7 +254,7 @@ sub select_next {
 	}
 
 	while (($dir < 0 && $row > $self->top_row) ||
-		   ($dir > 0 && $row < $self->nrow - 1)) {
+	       ($dir > 0 && $row < $self->nrow - 1)) {
 		my $line = $self->line($row);
 		$row = ($dir < 0 ? $line->beg : $line->end) + $dir;
 		$line = $self->line($row);
