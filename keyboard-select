@@ -170,6 +170,16 @@ sub key_press {
 		move_cursor($self, 'l');
 	} elsif ($keysym == 0xff51 || $keysym == 0xff53) { # left/right
 		my $dir = $keysym == 0xff51 ? -1 : 1;
+		my $mode =
+			$event->{state} & urxvt::ShiftMask ? 'n' :
+			$event->{state} & urxvt::Mod1Mask ? 'b' :
+			'';
+
+		if ($self->{select} ne $mode) {
+			toggle_select($self, $self->{select});
+			toggle_select($self, $mode);
+		}
+
 		if ($event->{state} & urxvt::ControlMask) {
 			move_to($self, 'w', $dir); # skip words
 		} else {
