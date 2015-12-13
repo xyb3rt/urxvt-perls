@@ -160,16 +160,15 @@ sub key_press {
 		} else {
 			toggle_select($self, 'n');
 		}
-	} elsif ($key eq 'k' || $keysym == 0xff52) {
+	} elsif ($key eq 'k') {
 		move_cursor($self, 'k');
-	} elsif ($key eq 'j' || $keysym == 0xff54) {
+	} elsif ($key eq 'j') {
 		move_cursor($self, 'j');
 	} elsif ($key eq 'h') {
 		move_cursor($self, 'h');
 	} elsif ($key eq 'l') {
 		move_cursor($self, 'l');
-	} elsif ($keysym == 0xff51 || $keysym == 0xff53) { # left/right
-		my $dir = $keysym == 0xff51 ? -1 : 1;
+	} elsif ($keysym >= 0xff51 && $keysym <= 0xff54) { # arrow keys
 		my $mode =
 			$event->{state} & urxvt::ShiftMask ? 'n' :
 			$event->{state} & urxvt::Mod1Mask ? 'b' :
@@ -180,10 +179,15 @@ sub key_press {
 			toggle_select($self, $mode);
 		}
 
-		if ($event->{state} & urxvt::ControlMask) {
-			move_to($self, 'w', $dir); # skip words
+		if ($keysym == 0xff51 || $keysym == 0xff53) { # left/right
+			my $dir = $keysym == 0xff51 ? -1 : 1;
+			if ($event->{state} & urxvt::ControlMask) {
+				move_to($self, 'w', $dir); # skip words
+			} else {
+				move_cursor($self, $dir < 0 ? 'h' : 'l');
+			}
 		} else {
-			move_cursor($self, $dir < 0 ? 'h' : 'l');
+			move_cursor($self, $keysym == 0xff52 ? 'k' : 'j');
 		}
 	} elsif ('gG0^$HML' =~ m/\Q$key\E/ ||
 			('fbdu' =~ m/\Q$key\E/ && $event->{state} & urxvt::ControlMask)) {
