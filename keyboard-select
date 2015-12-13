@@ -292,7 +292,7 @@ sub move_to {
 		}
 	} elsif ($dir < 0) {
 		NEXTUP: my $text = substr($line->t, 0, $offset);
-		if ($text =~ m/$pattern/) {
+		if ($text =~ m/.*$pattern/) {
 			$offset += $+[0] - length($text) - 1;
 			$found = 1;
 		} elsif ($wrap) {
