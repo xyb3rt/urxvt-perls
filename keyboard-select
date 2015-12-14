@@ -15,6 +15,8 @@
 # Use Meta-Escape to activate selection mode, then use the following keys:
 #   h/j/k/l:    Move cursor left/down/up/right (also with arrow keys)
 #   g/G/0/^/$/H/M/L/f/F/;/,/w/W/b/B/e/E: More vi-like cursor movement keys
+#   Shift-arrow: Select text
+#   Alt-arrow:  Select vertical block
 #   '/'/?:      Start forward/backward search
 #   n/N:        Repeat last search, N: in reverse direction
 #   Ctrl-f/b:   Scroll down/up one screen
@@ -160,14 +162,35 @@ sub key_press {
 		} else {
 			toggle_select($self, 'n');
 		}
-	} elsif ($key eq 'k' || $keysym == 0xff52) {
+	} elsif ($key eq 'k') {
 		move_cursor($self, 'k');
-	} elsif ($key eq 'j' || $keysym == 0xff54) {
+	} elsif ($key eq 'j') {
 		move_cursor($self, 'j');
-	} elsif ($key eq 'h' || $keysym == 0xff51) {
+	} elsif ($key eq 'h') {
 		move_cursor($self, 'h');
-	} elsif ($key eq 'l' || $keysym == 0xff53) {
+	} elsif ($key eq 'l') {
 		move_cursor($self, 'l');
+	} elsif ($keysym >= 0xff51 && $keysym <= 0xff54) { # arrow keys
+		my $mode =
+			$event->{state} & urxvt::ShiftMask ? 'n' :
+			$event->{state} & urxvt::Mod1Mask ? 'b' :
+			'';
+
+		if ($self->{select} ne $mode) {
+			toggle_select($self, $self->{select});
+			toggle_select($self, $mode);
+		}
+
+		if ($keysym == 0xff51 || $keysym == 0xff53) { # left/right
+			my $dir = $keysym == 0xff51 ? -1 : 1;
+			if ($event->{state} & urxvt::ControlMask) {
+				move_to($self, 'w', $dir); # skip words
+			} else {
+				move_cursor($self, $dir < 0 ? 'h' : 'l');
+			}
+		} else {
+			move_cursor($self, $keysym == 0xff52 ? 'k' : 'j');
+		}
 	} elsif ('gG0^$HML' =~ m/\Q$key\E/ ||
 			('fbdu' =~ m/\Q$key\E/ && $event->{state} & urxvt::ControlMask)) {
 		move_cursor($self, $key);
@@ -253,22 +276,25 @@ sub move_cursor {
 
 
 sub move_to {
-	my ($self, $key) = @_;
+	my ($self, $key, $dir) = @_;
 	my ($cr, $cc) = $self->screen_cur();
 	my $line = $self->line($cr);
 	my $offset = $self->{offset};
-	my ($dir, $pattern);
+	my ($pattern);
 	my ($wrap, $found) = (0, 0);
 
+	if (! defined $dir) {
+		$dir = 1;
+	}
+
 	if ($key eq ';' || $key eq ',') {
-		$dir = $self->{move_dir} * ($key eq ',' ? -1 : 1);
+		$dir *= $self->{move_dir} * ($key eq ',' ? -1 : 1);
 		$pattern = $self->{patterns}{sprintf('f%+d', $dir)};
 		return if not $pattern;
 	} else {
 		if (lc($key) eq 'b') {
-			$dir = -1;
+			$dir *= -1;
 		} else {
-			$dir = 1;
 			++$offset if lc($key) eq 'e';
 		}
 		$pattern = $self->{patterns}{$key};
@@ -292,7 +318,7 @@ sub move_to {
 		}
 	} elsif ($dir < 0) {
 		NEXTUP: my $text = substr($line->t, 0, $offset);
-		if ($text =~ m/$pattern/) {
+		if ($text =~ m/.*$pattern/) {
 			$offset += $+[0] - length($text) - 1;
 			$found = 1;
 		} elsif ($wrap) {
