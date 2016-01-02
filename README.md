@@ -75,6 +75,14 @@ the matcher extension by reading all `URxvt.matcher.pattern.[0-9]` resources.
 
 clipboard
 ---------
+
+**DEPRECATED**
+
+Since version 9.20 rxvt-unicode natively supports copying to and pasting from
+the CLIPBOARD buffer with the `Ctrl-Meta-c` and `Ctrl-Meta-v` key bindings. The
+`clipboard.autocopy` setting is provided by the `selection_to_clipboard`
+extension shipped with rxvt-unicode.
+
 Use keyboard shortcuts to copy the selection to the clipboard and to paste the
 clipboard contents (optionally escaping all special characters).
 
@@ -86,6 +94,7 @@ After installing, put the following lines in your .Xdefaults/.Xresources:
     URxvt.keysym.M-C-v: perl:clipboard:paste_escaped
 
 Options:
+
     URxvt.clipboard.autocopy: if set to true, the clipboard is automatically
                               updated whenever the PRIMARY selection changes
 
