@@ -45,6 +45,13 @@ url-select
 ----------
 Use keyboard shortcuts to select URLs.
 
+**DEPRECATED**
+
+Since version 9.21 the *matcher* extension shipped with rxvt-unicode fully
+replaces this extension. The `url-select:select_next` action is provided by the
+`matcher:select` action. However, the *matcher* extension does not provide
+vi-like key bindings; it only uses the arrow and home/end keys.
+
 This should be used as a replacement for the default matcher extension, it also
 makes URLs clickable with the middle mouse button.
 
