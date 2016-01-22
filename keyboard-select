@@ -376,12 +376,19 @@ sub tt_write {
 
 sub refresh {
 	my ($self) = @_;
-	my $reverse_cursor = $self->{select} ne 'l';
 	my ($cr, $cc) = $self->screen_cur();
 
 	if ($self->{select}) {
+		my ($hl, $reverse_cursor);
 		my ($br, $bc, $er, $ec) = calc_span($self);
 
+		if ($self->x_resource('highlightColor')) {
+			$hl = urxvt::RS_Sel;
+			$reverse_cursor = 0;
+		} else {
+			$hl = urxvt::RS_RVid;
+			$reverse_cursor = $self->{select} ne 'l';
+		}
 		if ($self->{select} eq 'b') {
 			my $co = $self->line($cr)->offset_of($cr, $cc);
 			my $dollar = $self->{dollar} && $co >= $self->{dollar} - 1;
@@ -393,19 +400,19 @@ sub refresh {
 					$ec = $line->l if $dollar;
 					my ($br, $bc) = $line->coord_of($bc);
 					my ($er, $ec) = $line->coord_of($ec <= $line->l ? $ec : $line->l);
-					$self->scr_xor_span($br, $bc, $er, $ec, urxvt::RS_RVid);
+					$self->scr_xor_span($br, $bc, $er, $ec, $hl);
 				} elsif ($r == $cr) {
 					$reverse_cursor = 0;
 				}
 				$r = $line->end + 1;
 			}
 		} else {
-			$self->scr_xor_span($br, $bc, $er, $ec, urxvt::RS_RVid);
+			$self->scr_xor_span($br, $bc, $er, $ec, $hl);
 		}
 
 		if ($reverse_cursor) {
 			# make the cursor visible again
-			$self->scr_xor_span($cr, $cc, $cr, $cc + 1, urxvt::RS_RVid);
+			$self->scr_xor_span($cr, $cc, $cr, $cc + 1, $hl);
 		}
 	}
 

@@ -315,7 +315,11 @@ sub refresh {
 	my ($self) = @_;
 
 	if ($self->{found}) {
-		$self->scr_xor_span(@{$self->{found}[$self->{n}]}[0 .. 3], urxvt::RS_RVid);
+		if ($self->x_resource('highlightColor')) {
+			$self->scr_xor_span(@{$self->{found}[$self->{n}]}[0 .. 3], urxvt::RS_Sel);
+		} else {
+			$self->scr_xor_span(@{$self->{found}[$self->{n}]}[0 .. 3], urxvt::RS_RVid);
+		}
 	}
 
 	()
