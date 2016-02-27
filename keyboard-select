@@ -378,6 +378,13 @@ sub refresh {
 	my ($self) = @_;
 	my ($cr, $cc) = $self->screen_cur();
 
+	# scroll the current cursor position into visible area
+	if ($cr < $self->view_start()) {
+		$self->view_start($cr);
+	} elsif ($cr >= $self->view_start() + $self->nrow) {
+		$self->view_start($cr - $self->nrow + 1);
+	}
+
 	if ($self->{select}) {
 		my ($hl, $reverse_cursor);
 		my ($br, $bc, $er, $ec) = calc_span($self);
@@ -414,13 +421,6 @@ sub refresh {
 			# make the cursor visible again
 			$self->scr_xor_span($cr, $cc, $cr, $cc + 1, $hl);
 		}
-	}
-
-	# scroll the current cursor position into visible area
-	if ($cr < $self->view_start()) {
-		$self->view_start($cr);
-	} elsif ($cr >= $self->view_start() + $self->nrow) {
-		$self->view_start($cr - $self->nrow + 1);
 	}
 
 	()
