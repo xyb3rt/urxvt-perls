@@ -130,6 +130,6 @@ from the CLIPBOARD buffer.
 After installing, put the following lines in your .Xdefaults/.Xresources:
 
     URxvt.perl-ext-common           : selection-to-clipboard,pasta
-    URxvt.keysym.Control-Shift-V    : perl:pasta
+    URxvt.keysym.Control-Shift-V    : perl:pasta:paste
 
 The use of the functions should be self-explanatory!
