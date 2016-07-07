@@ -153,7 +153,8 @@ sub key_press {
 	if ($keysym == 0xff1b || lc($char) eq 'q' ||
 	    (lc($char) eq 'c' && $event->{state} & urxvt::ControlMask)) {
 		deactivate($self);
-	} elsif ($keysym == 0xff0d || $char eq 'o') {
+	} elsif ($keysym == 0xff0d || $char eq 'o' ||
+			(lc($char) eq 'm' && $event->{state} & urxvt::ControlMask)) {
 		$self->exec_async(@{$self->{browser}}, ${$self->{found}[$self->{n}]}[4]);
 		deactivate($self) unless $char eq 'o';
 	} elsif ($char eq 'y') {

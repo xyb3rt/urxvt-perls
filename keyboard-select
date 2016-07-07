@@ -84,7 +84,8 @@ sub key_press {
 			} else {
 				status_area($self);
 			}
-		} elsif ($keysym == 0xff0d) {
+		} elsif ($keysym == 0xff0d ||
+				(lc($key) eq 'm' && $event->{state} & urxvt::ControlMask)) {
 			my $txt = substr($self->{search}, 1);
 			if ($txt) {
 				$self->{pattern} = ($txt =~ m/[[:upper:]]/) ? qr/\Q$txt\E/ :
@@ -127,7 +128,8 @@ sub key_press {
 		}
 	} elsif ($keysym == 0xff1b || lc($key) eq 'q') {
 		deactivate($self);
-	} elsif (lc($key) eq 'y' || $keysym == 0xff0d) {
+	} elsif (lc($key) eq 'y' || $keysym == 0xff0d ||
+			(lc($key) eq 'm' && $event->{state} & urxvt::ControlMask)) {
 		my $quit = 0;
 		if ($key eq 'Y' && $self->{select} ne 'l') {
 			$quit = !$self->{select};
