@@ -30,7 +30,7 @@ keyboard-select directly in backward search mode:
 Use Meta-Escape to activate selection mode, then use the following keys:
 
     h/j/k/l:    Move cursor left/down/up/right (also with arrow keys)
-    g/G/0/^/$/H/M/L/f/F/;/,/w/W/b/B/e/E: More vi-like cursor movement keys
+    g/G/0/^/Home/$/End/H/M/L/f/F/;/,/w/W/b/B/e/E: More vi-like cursor movement keys
     '/'/?:      Start forward/backward search
     n/N:        Repeat last search, N: in reverse direction
     Ctrl-f/b:   Scroll down/up one screen
