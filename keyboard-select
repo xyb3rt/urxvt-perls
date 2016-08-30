@@ -170,6 +170,10 @@ sub key_press {
 		move_cursor($self, 'h');
 	} elsif ($key eq 'l' || $keysym == 0xff53) {
 		move_cursor($self, 'l');
+	} elsif ($keysym == 0xff57) {
+		move_cursor($self, '$');
+	} elsif ($keysym == 0xff50) {
+		move_cursor($self, '^');
 	} elsif ('gG0^$HML' =~ m/\Q$key\E/ ||
 			('fbdu' =~ m/\Q$key\E/ && $event->{state} & urxvt::ControlMask)) {
 		move_cursor($self, $key);
