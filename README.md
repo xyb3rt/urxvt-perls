@@ -121,4 +121,15 @@ On Mac OS X, put these lines in your .Xdefaults/.Xresources:
     URxvt.clipboard.copycmd:  pbcopy
     URxvt.clipboard.pastecmd: pbpaste
 
+pasta
+-----
+
+Bind different keyboard shortcut than the default one to paste content
+from the CLIPBOARD buffer.
+
+After installing, put the following lines in your .Xdefaults/.Xresources:
+
+    URxvt.perl-ext-common           : selection-to-clipboard,pasta
+    URxvt.keysym.Control-Shift-V    : perl:pasta:paste
+
 The use of the functions should be self-explanatory!
