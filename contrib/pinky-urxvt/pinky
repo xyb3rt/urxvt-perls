@@ -106,17 +106,6 @@ sub rs_text {
 }
 
 
-sub rs_bool {
-  my ($self, $name, $default) = @_;
-  my $val = $self->x_resource ($self->{rs_prefix} . '.' . $name);
-
-  if (defined $val) {
-    return $val !~ /^(?:false|0|no)$/i;
-  }
-  return $default;
-}
-
-
 sub rs_color($$$$) {
   my ($self, $prefix, $def_fg, $def_bg) = @_;
   my $fg = $self->rs_text ($prefix . '-fg') // $def_fg;
