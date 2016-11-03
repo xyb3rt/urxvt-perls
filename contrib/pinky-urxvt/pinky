@@ -26,20 +26,8 @@ use strict;
 use warnings;
 
 
-sub reconfig {
-  my ($self, $reconfigure) = @_;
-  my $oldh = $self->{tabheight};
-
-  if ($reconfigure && $self->{tabheight} != $oldh) {
-    $self->configure;
-  }
-  return;
-}
-
-
 sub refresh {
   my ($self) = @_;
-
   my $ncol = $self->ncol;
   my $text = " " x $ncol;
   my $rend = [($self->{rs_pinky}) x $ncol];
@@ -59,15 +47,14 @@ sub refresh {
 
 
 sub new_pinky_tab {
-   my ($self, @argv) = @_;
+  my ($self, @argv) = @_;
 
-   push @urxvt::TERM_INIT, sub {
+  push @urxvt::TERM_INIT, sub {
     my ($term) = @_;
     $term->{parent} = $self;
 
     for (0 .. urxvt::NUM_RESOURCES - 1) {
       my $value = $self->{resource}[$_];
-
       if (defined $value) {
         $term->resource ("+$_" => $value);
       }
@@ -82,7 +69,7 @@ sub new_pinky_tab {
       $term->resource ('perl_ext_2') .
       $self->{perl_ext_blacklist}
     );
-   };
+  };
 
   push @urxvt::TERM_EXT, urxvt::ext::pinky::pinky_status::;
 
@@ -90,25 +77,25 @@ sub new_pinky_tab {
   my $term = new urxvt::term
     $self->env, $urxvt::RXVTNAME,
     -embed => $self->parent,
-    @argv_list;
+   @argv_list;
 
   return $term;
 }
 
 
 sub configure {
-   my ($self) = @_;
-   my $x = 0;
-   my $statusLine = $self->{cur};
+  my ($self) = @_;
+  my $x = 0;
+  my $statusLine = $self->{cur};
 
-   for (; $x < 2; $x++) {
-     $statusLine->XMoveResizeWindow (
-        $statusLine->parent,
-        0, $self->{tabheight} + $x,
-        $self->width, $self->height - $self->{tabheight}
-     );
-   }
-   return;
+  for (; $x < 2; $x++) {
+    $statusLine->XMoveResizeWindow (
+      $statusLine->parent,
+      0, $self->{tabheight} + $x,
+      $self->width, $self->height - $self->{tabheight}
+    );
+  }
+  return;
 }
 
 
@@ -141,8 +128,8 @@ sub rs_color($$$$) {
 
 sub make_current {
   my ($self, $statusLine) = @_;
-
   my $cur = $self->{cur};
+
   if ($cur) {
     if ($cur->mapped) {
       $cur->XUnmapWindow ($cur->parent);
@@ -192,7 +179,6 @@ sub on_init {
   my ($self) = @_;
 
   $self->{resource} = [map $self->resource ("+$_"), 0 .. urxvt::NUM_RESOURCES - 1];
-
   $self->resource (int_bwidth => 0);
   $self->resource (pty_fd => -1);
 
@@ -206,11 +192,7 @@ sub on_init {
 
   # order is important
   $self->option ($urxvt::OPTION{scrollBar}, 0);
-
   $self->{rs_pinky} = $self->rs_color ('pinky', 3, 0);
-
-  $self->{reopen_on_close} = $self->rs_bool ('reopen-on-close', 0);
-
   $self->{perl_ext_blacklist} = join (',-', ',-pinky');
 
   return;
@@ -222,7 +204,6 @@ sub on_start {
 
   $self->{maxtabheight} = $self->int_bwidth + $self->fheight + $self->lineSpace;
   $self->{tabheight} = $self->{maxtabheight};
-
   $self->cmd_parse ("\033[?25l");
 
   my @argv = $self->argv;
@@ -232,15 +213,6 @@ sub on_start {
   $self->{argv} = \@argv;
 
   $self->new_pinky_tab;
-  return;
-}
-
-
-sub on_configure_notify {
-  my ($self, $event) = @_;
-
-  $self->configure;
-  $self->refresh;
   return;
 }
 
@@ -265,28 +237,7 @@ sub pinky_status_start {
 sub pinky_status_destroy {
   my ($self, $statusLine) = @_;
 
-  if ($self->{reopen_on_close} && $#{$self->{pinky_tab}} == 0) {
-    $self->new_pinky_tab;
-    $self->make_current ($self->{pinky_tab}[-1]);
-  }
-  $self->{pinky_tab} = [
-    grep $_ != $statusLine, @{ $self->{pinky_tab} }
-  ];
-
-  if (@{$self->{pinky_tab}}) {
-    if ($self->{cur} == $statusLine) {
-      delete $self->{cur};
-      if(defined $self->{pinky_tab}[-1]) {
-        $self->make_current ($self->{pinky_tab}[-1]);
-      }
-    }
-    else {
-      $self->refresh;
-    }
-  }
-  else {
-    $self->{destroy} = urxvt::iw->new->start->cb (sub { $self->destroy });
-  }
+  $self->{destroy} = urxvt::iw->new->start->cb (sub { $self->destroy });
   return;
 }
 
@@ -300,7 +251,7 @@ sub tab_osc_seq_perl {
   if ($1 eq "update_line") {
     my ($name) = split /;/, $osc , 1;
     $statusLine->{name} = $name;
-    $self->reconfig (1);
+    $self->configure;
     $self->refresh;
   }
   return 1;
