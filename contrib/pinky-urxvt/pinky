@@ -1,0 +1,276 @@
+#!/usr/bin/env perl
+
+# 11/02/2016
+
+# Based on tabbed and tabbedex.
+# Copyright (c) 2006-2012 tabbed authors
+# Copyright (c) 2009-2014 tabbedex authors
+# Copyright (c) 2016 Aaron Caffrey
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301, USA.
+
+use strict;
+use warnings;
+
+
+sub refresh {
+  my ($self) = @_;
+  my $ncol = $self->ncol;
+  my $text = " " x $ncol;
+  my $rend = [($self->{rs_pinky}) x $ncol];
+
+  my $statusLine = $self->{pinky_tab}[0];
+  my $txt = $statusLine->{name} || "";
+  my $len = length $txt;
+
+  substr $text, 0, $len + 1, " $txt ";
+
+  $self->ROW_t (0, $text, 0, 0, $ncol);
+  $self->ROW_r (0, $rend, 0, 0, $ncol);
+
+  $self->want_refresh;
+  return;
+}
+
+
+sub new_pinky_tab {
+  my ($self, @argv) = @_;
+
+  push @urxvt::TERM_INIT, sub {
+    my ($term) = @_;
+    $term->{parent} = $self;
+
+    for (0 .. urxvt::NUM_RESOURCES - 1) {
+      my $value = $self->{resource}[$_];
+      if (defined $value) {
+        $term->resource ("+$_" => $value);
+      }
+    }
+
+    foreach my $opt (keys %urxvt::OPTION) {
+      my $value = $self->{option}{$opt};
+      $term->option($urxvt::OPTION{$opt}, $value);
+    }
+
+    $term->resource (perl_ext_2 =>
+      $term->resource ('perl_ext_2') .
+      $self->{perl_ext_blacklist}
+    );
+  };
+
+  push @urxvt::TERM_EXT, urxvt::ext::pinky::pinky_status::;
+
+  my @argv_list = ( @{$self->{argv}} , @argv );
+  my $term = new urxvt::term
+    $self->env, $urxvt::RXVTNAME,
+    -embed => $self->parent,
+   @argv_list;
+
+  return $term;
+}
+
+
+sub configure {
+  my ($self) = @_;
+  my $x = 0;
+  my $statusLine = $self->{cur};
+
+  for (; $x < 2; $x++) {
+    $statusLine->XMoveResizeWindow (
+      $statusLine->parent,
+      0, $self->{tabheight} + $x,
+      $self->width, $self->height - $self->{tabheight}
+    );
+  }
+  return;
+}
+
+
+sub rs_text {
+  my ($self, $name, $default) = @_;
+
+  return $self->x_resource ($self->{rs_prefix} . '.' . $name) // $default;
+}
+
+
+sub rs_color($$$$) {
+  my ($self, $prefix, $def_fg, $def_bg) = @_;
+  my $fg = $self->rs_text ($prefix . '-fg') // $def_fg;
+  my $bg = $self->rs_text ($prefix . '-bg') // $def_bg;
+
+  return urxvt::SET_COLOR (urxvt::DEFAULT_RSTYLE, $fg + 2, $bg + 2);
+}
+
+
+sub make_current {
+  my ($self, $statusLine) = @_;
+  my $cur = $self->{cur};
+
+  if ($cur) {
+    if ($cur->mapped) {
+      $cur->XUnmapWindow ($cur->parent);
+    }
+    $cur->focus_out;
+  }
+
+  $self->{cur} = $statusLine;
+  $self->configure;
+
+  $statusLine->focus_out;
+  if ($self->focus) {
+    $statusLine->focus_in;
+  }
+
+  $statusLine->XMapWindow ($statusLine->parent);
+  $self->refresh;
+  return;
+}
+
+
+sub on_focus_in {
+  my ($self, $event) = @_;
+
+  $self->{cur}->focus_in;
+  return;
+}
+
+
+sub on_focus_out {
+  my ($self, $event) = @_;
+
+  $self->{cur}->focus_out;
+  return;
+}
+
+
+sub on_tt_write {
+  my ($self, $octets) = @_;
+
+  $self->{cur}->tt_write ($octets);
+  return 1;
+}
+
+
+sub on_init {
+  my ($self) = @_;
+
+  $self->{resource} = [map $self->resource ("+$_"), 0 .. urxvt::NUM_RESOURCES - 1];
+  $self->resource (int_bwidth => 0);
+  $self->resource (pty_fd => -1);
+
+  $self->{rs_prefix} = 'pinky';
+  $self->{rs_prefix} = $self->rs_text ('pinky-rs-prefix', 'pinky');
+
+  $self->{option} = {};
+  for my $key (keys %urxvt::OPTION) {
+    $self->{option}{$key} = $self->option($urxvt::OPTION{$key});
+  }
+
+  # order is important
+  $self->option ($urxvt::OPTION{scrollBar}, 0);
+  $self->{rs_pinky} = $self->rs_color ('pinky', 3, 0);
+  $self->{perl_ext_blacklist} = join (',-', ',-pinky');
+
+  return;
+}
+
+
+sub on_start {
+  my ($self) = @_;
+
+  $self->{maxtabheight} = $self->int_bwidth + $self->fheight + $self->lineSpace;
+  $self->{tabheight} = $self->{maxtabheight};
+  $self->cmd_parse ("\033[?25l");
+
+  my @argv = $self->argv;
+  do {
+    shift @argv;
+  } while @argv && $argv[0] ne "-e";
+  $self->{argv} = \@argv;
+
+  $self->new_pinky_tab;
+  return;
+}
+
+
+sub on_wm_delete_window {
+  my ($self) = @_;
+
+  $_->destroy for @{$self->{pinky_tab}};
+  return 1;
+}
+
+
+sub pinky_status_start {
+  my ($self, $statusLine) = @_;
+
+  push @{ $self->{pinky_tab} }, $statusLine;
+  $self->make_current ($statusLine);
+  return;
+}
+
+
+sub pinky_status_destroy {
+  my ($self, $statusLine) = @_;
+
+  $self->{destroy} = urxvt::iw->new->start->cb (sub { $self->destroy });
+  return;
+}
+
+
+sub tab_osc_seq_perl {
+  my ($self, $statusLine, $osc) = @_;
+
+  $osc =~ s/^([^;]+)+;?//
+    or return;
+
+  if ($1 eq "update_line") {
+    my ($name) = split /;/, $osc , 1;
+    $statusLine->{name} = $name;
+    $self->configure;
+    $self->refresh;
+  }
+  return 1;
+}
+
+
+package urxvt::ext::pinky::pinky_status;
+
+{
+  for my $hook ( qw(start destroy) ) {
+    eval qq{
+      sub on_$hook {
+        my \$parent = \$_[0]{term}{parent}
+        or return;
+        \$parent->pinky_status_$hook (\@_)
+      }
+    };
+    die if $@;
+  }
+}
+
+
+sub on_osc_seq_perl {
+  my ($self, $osc, $resp) = @_;
+
+  return unless $osc =~ s/^pinky;//;
+
+  my $term = $self->{term}->{parent};
+  my $statusLine = $self->{term}->{parent}->{cur};
+  $term->tab_osc_seq_perl($statusLine, $osc);
+
+  return 1;
+}
