@@ -24,8 +24,12 @@
 #   URvxt.url-select.button:    Mouse button to click-open URLs (default: 2)
 #   URxvt.url-select.launcher:  Browser/command to open selected URL with
 #   URxvt.url-select.underline: If set to true, all URLs get underlined
+#   URxvt.url-select.also-use-clipboard: If set to true, copied URLs are also
+#                                        copied to CLIPBOARD
+
 
 use strict;
+use warnings;
 
 # The custom rendition bit to use for marking the cell as being underlined
 # by us so we can unset it again after a line has changed.
@@ -35,6 +39,9 @@ sub on_start {
 	my ($self) = @_;
 
 	# read resource settings
+	$self->{copy_cmd} = $self->x_resource('clipboard.copycmd') || 'xsel -ib';
+	$self->{also_use_clipboard} = $self->x_resource('url-select.also-use-clipboard') || 'false';
+
 	if ($self->x_resource('url-select.launcher')) {
 		@{$self->{browser}} = split /\s+/, $self->x_resource('url-select.launcher');
 	} else {
@@ -85,6 +92,26 @@ sub on_start {
 				[\w\-\@;\/?:&=%\$+*~]                # exclude some trailing characters (heuristic)
 			)+
 		}x;
+	}
+
+	()
+}
+
+
+sub copy {
+	my ($self) = @_;
+
+	if ($self->{also_use_clipboard} eq 'false') {
+            return;
+	}
+
+	if (open(CLIPBOARD, "| $self->{copy_cmd}")) {
+		my $sel = $self->selection();
+		utf8::encode($sel);
+		print CLIPBOARD $sel;
+		close(CLIPBOARD);
+	} else {
+		print STDERR "error running '$self->{copy_cmd}': $!\n";
 	}
 
 	()
@@ -162,6 +189,7 @@ sub key_press {
 		$self->selection_beg(${$found}[0], ${$found}[1]);
 		$self->selection_end(${$found}[2], ${$found}[3]);
 		$self->selection_make($event->{time});
+		copy($self);
 		$self->selection_beg(1, 0);
 		$self->selection_end(1, 0);
 		deactivate($self);
@@ -248,6 +276,7 @@ sub select_next {
 			$self->selection_beg(${$found}[0], ${$found}[1]);
 			$self->selection_end(${$found}[2], ${$found}[3]);
 			$self->selection_make($event->{time});
+			copy($self);
 			$self->selection_beg(1, 0);
 			$self->selection_end(1, 0);
 		}
@@ -279,6 +308,7 @@ sub select_next {
 					$self->selection_beg(${$found}[0], ${$found}[1]);
 					$self->selection_end(${$found}[2], ${$found}[3]);
 					$self->selection_make($event->{time});
+					copy($self);
 					$self->selection_beg(1, 0);
 					$self->selection_end(1, 0);
 				}
