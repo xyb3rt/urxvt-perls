@@ -24,11 +24,16 @@
 #   Y:          Copy selected lines to primary buffer or cursor line and quit
 #   q/Escape:   Quit keyboard selection mode
 
+# Options:
+#   URxvt.keyboard-select.clipboard: If true, copy to clipboard too
+
 
 use strict;
 
 sub on_start{
 	my ($self) = @_;
+
+	$self->{clipboard} = $self->x_resource_boolean('keyboard-select.clipboard');
 
 	$self->{patterns}{'w'} = qr/\w[^\w\s]|\W\w|\s\S/;
 	$self->{patterns}{'W'} = qr/\s\S/;
@@ -141,6 +146,10 @@ sub key_press {
 			$self->selection_beg($br, $bc);
 			$self->selection_end($er, $ec);
 			$self->selection_make($event->{time}, $self->{select} eq 'b');
+			if ($self->{clipboard}) {
+				$self->selection($self->selection(), 1);
+				$self->selection_grab($event->{time}, 1);
+			}
 			if (lc($key) eq 'y') {
 				$self->selection_beg(1, 0);
 				$self->selection_end(1, 0);
