@@ -50,7 +50,7 @@ clipboard
 
 Since version 9.20 rxvt-unicode natively supports copying to and pasting from
 the CLIPBOARD buffer with the `Ctrl-Meta-c` and `Ctrl-Meta-v` key bindings. The
-`clipboard.autocopy` setting is provided by the `selection_to_clipboard`
+`clipboard.autocopy` setting is provided by the `selection-to-clipboard`
 extension shipped with rxvt-unicode.
 
 Use keyboard shortcuts to copy the selection to the clipboard and to paste the
