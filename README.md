@@ -36,6 +36,7 @@ Use Meta-Escape to activate selection mode, then use the following keys:
     Ctrl-f/b:   Scroll down/up one screen
     Ctrl-d/u:   Scroll down/up half a screen
     v/V/Ctrl-v: Toggle normal/linewise/blockwise selection
+    o:          Go to other end of selected text
     y/Return:   Copy selection to primary buffer, Return: quit afterwards
     Y:          Copy selected lines to primary buffer or cursor line and quit
     q/Escape:   Quit keyboard selection mode
