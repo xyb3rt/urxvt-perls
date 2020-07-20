@@ -20,6 +20,7 @@
 #   Ctrl-f/b:   Scroll down/up one screen
 #   Ctrl-d/u:   Scroll down/up half a screen
 #   v/V/Ctrl-v: Toggle normal/linewise/blockwise selection
+#   o:          Go to other end of selected text
 #   y/Return:   Copy selection to primary buffer, Return: quit afterwards
 #   Y:          Copy selected lines to primary buffer or cursor line and quit
 #   q/Escape:   Quit keyboard selection mode
@@ -171,6 +172,8 @@ sub key_press {
 		} else {
 			toggle_select($self, 'n');
 		}
+	} elsif ($key eq 'o') {
+		exchange_cursor_selection($self);
 	} elsif ($key eq 'k' || $keysym == 0xff52) {
 		move_cursor($self, 'k');
 	} elsif ($key eq 'j' || $keysym == 0xff54) {
@@ -571,6 +574,25 @@ sub toggle_select {
 	()
 }
 
+sub exchange_cursor_selection {
+	my ($self) = @_;
+
+	if (not $self->{select}) {
+		return ();
+	}
+
+	my ($ar, $ac) = ($self->{ar}, $self->{ac});
+	my $line = $self->line($ar);
+
+	$self->{offset} = $ac;
+	($self->{ar}, $self->{ac}) = $self->screen_cur();
+	$self->screen_cur($line->coord_of($ac));
+
+	status_area($self);
+	$self->want_refresh();
+
+	()
+}
 
 sub calc_span {
 	my ($self) = @_;
